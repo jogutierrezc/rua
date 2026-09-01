@@ -1,0 +1,135 @@
+/**
+ * Rua — Tokens de color. GENERADO: no editar a mano.
+ *
+ *   npm run gen:tokens
+ *
+ * Es el respaldo del PRIMER PINTADO, para un navegador que aún no tiene el
+ * tema en caché. En cuanto la aplicación monta, TemaProvider deriva la paleta
+ * elegida y escribe estas mismas propiedades en línea, que ganan por
+ * especificidad. Para cambiar los colores se edita src/styles/paletas.ts.
+ *
+ * Paleta por defecto: UDES Blue — Azul acero institucional sobre grises fríos.
+ *
+ * Formato: canales RGB separados por espacio, para que Tailwind pueda aplicar
+ * opacidad (`bg-primary/10`).
+ */
+
+:root {
+  color-scheme: light;
+
+  --c-canvas: 245 246 250;
+  --c-sunken: 235 238 244;
+  --c-surface: 252 253 254;
+  --c-surface-muted: 240 243 247;
+  --c-surface-raised: 255 255 255;
+  --c-fg: 39 41 50;
+  --c-fg-muted: 78 79 83;
+  --c-fg-subtle: 105 107 111;
+  --c-fg-on-dark: 226 231 240;
+  --c-line: 228 228 229;
+  --c-line-strong: 130 132 137;
+  --c-primary: 74 121 162;
+  --c-primary-hover: 74 121 162;
+  --c-primary-active: 58 95 126;
+  --c-primary-fg: 255 255 255;
+  --c-primary-soft: 234 240 245;
+  --c-primary-soft-fg: 68 111 148;
+  --c-accent: 163 85 186;
+  --c-accent-fg: 255 255 255;
+  --c-accent-soft: 244 235 247;
+  --c-accent-soft-fg: 153 72 177;
+  --c-success: 31 134 74;
+  --c-success-soft: 227 244 234;
+  --c-success-soft-fg: 29 124 69;
+  --c-warning: 149 111 35;
+  --c-warning-soft: 244 239 227;
+  --c-warning-soft-fg: 137 102 32;
+  --c-danger: 174 52 41;
+  --c-danger-soft: 244 229 227;
+  --c-danger-soft-fg: 174 52 41;
+  --c-focus: 37 129 208;
+  --c-shadow: 27 29 35;
+  --material-bg: 255 255 255;
+  --material-alpha: 0.74;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --c-canvas: 23 24 29;
+  --c-sunken: 30 32 39;
+  --c-surface: 48 50 60;
+  --c-surface-muted: 58 61 72;
+  --c-surface-raised: 53 56 67;
+  --c-fg: 215 221 234;
+  --c-fg-muted: 192 193 195;
+  --c-fg-subtle: 167 169 172;
+  --c-fg-on-dark: 215 221 234;
+  --c-line: 68 72 83;
+  --c-line-strong: 118 125 142;
+  --c-primary: 141 174 203;
+  --c-primary-hover: 159 187 211;
+  --c-primary-active: 123 150 175;
+  --c-primary-fg: 39 41 50;
+  --c-primary-soft: 47 60 76;
+  --c-primary-soft-fg: 135 170 200;
+  --c-accent: 202 153 216;
+  --c-accent-fg: 39 41 50;
+  --c-accent-soft: 67 54 80;
+  --c-accent-soft-fg: 200 148 214;
+  --c-success: 84 212 137;
+  --c-success-soft: 48 75 67;
+  --c-success-soft-fg: 84 212 137;
+  --c-warning: 212 169 84;
+  --c-warning-soft: 74 67 57;
+  --c-warning-soft-fg: 213 172 88;
+  --c-danger: 224 140 132;
+  --c-danger-soft: 74 52 57;
+  --c-danger-soft-fg: 225 142 135;
+  --c-focus: 31 130 214;
+  --c-shadow: 0 0 0;
+  --material-bg: 48 50 60;
+  --material-alpha: 0.76;
+}
+
+/* Sin preferencia explícita, seguimos al sistema. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --c-canvas: 23 24 29;
+    --c-sunken: 30 32 39;
+    --c-surface: 48 50 60;
+    --c-surface-muted: 58 61 72;
+    --c-surface-raised: 53 56 67;
+    --c-fg: 215 221 234;
+    --c-fg-muted: 192 193 195;
+    --c-fg-subtle: 167 169 172;
+    --c-fg-on-dark: 215 221 234;
+    --c-line: 68 72 83;
+    --c-line-strong: 118 125 142;
+    --c-primary: 141 174 203;
+    --c-primary-hover: 159 187 211;
+    --c-primary-active: 123 150 175;
+    --c-primary-fg: 39 41 50;
+    --c-primary-soft: 47 60 76;
+    --c-primary-soft-fg: 135 170 200;
+    --c-accent: 202 153 216;
+    --c-accent-fg: 39 41 50;
+    --c-accent-soft: 67 54 80;
+    --c-accent-soft-fg: 200 148 214;
+    --c-success: 84 212 137;
+    --c-success-soft: 48 75 67;
+    --c-success-soft-fg: 84 212 137;
+    --c-warning: 212 169 84;
+    --c-warning-soft: 74 67 57;
+    --c-warning-soft-fg: 213 172 88;
+    --c-danger: 224 140 132;
+    --c-danger-soft: 74 52 57;
+    --c-danger-soft-fg: 225 142 135;
+    --c-focus: 31 130 214;
+    --c-shadow: 0 0 0;
+    --material-bg: 48 50 60;
+    --material-alpha: 0.76;
+  }
+}

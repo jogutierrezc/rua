@@ -1,0 +1,134 @@
+@import './styles/tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    @apply border-line;
+  }
+
+  html {
+    /* El espaciado va en rem para que el layout escale CON el tamaño de texto
+       elegido por el usuario, en vez de romperse. */
+    font-size: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-canvas text-fg font-sans text-body antialiased;
+    font-feature-settings: 'cv05' 1, 'ss03' 1;
+    font-optical-sizing: auto;
+  }
+
+  /* Cifras alineadas en columna: sin esto las tablas bailan al actualizarse */
+  .tabular,
+  table td,
+  table th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Foco visible y consistente: un solo anillo en toda la app */
+  :focus-visible {
+    @apply outline-none ring-2 ring-focus/70 ring-offset-2 ring-offset-canvas;
+  }
+
+  ::selection {
+    @apply bg-primary/15;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-line-strong/70;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-fg-subtle/60;
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /**
+   * Material translúcido para la cabecera fija. El contenido pasa POR DEBAJO
+   * en vez de que la barra se coma una franja opaca de la pantalla.
+   */
+  .material-chrome {
+    background-color: rgb(var(--material-bg) / var(--material-alpha));
+    backdrop-filter: blur(var(--material-blur)) saturate(180%);
+    -webkit-backdrop-filter: blur(var(--material-blur)) saturate(180%);
+  }
+
+  /**
+   * Borde de scroll en lugar de una línea dura de 1px: la separación aparece
+   * sólo donde el contenido realmente pasa bajo la barra.
+   */
+  .scroll-edge::after {
+    content: '';
+    @apply pointer-events-none absolute inset-x-0 top-full h-4;
+    background: linear-gradient(
+      to bottom,
+      rgb(var(--c-shadow) / 0.05),
+      rgb(var(--c-shadow) / 0)
+    );
+  }
+}
+
+@layer utilities {
+  /* El hover sólo debe existir donde hay un puntero real.
+     En táctil, :hover se queda pegado tras el tap. */
+  @media not all and (hover: hover) and (pointer: fine) {
+    .hover-only\:none {
+      transition: none;
+    }
+  }
+}
+
+/**
+ * Movimiento reducido no significa CERO feedback: significa un equivalente
+ * más suave y no vestibular. Se conservan opacidad y color, se elimina
+ * el desplazamiento y el rebote.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-motion='transform'] {
+    transform: none !important;
+  }
+}
+
+/* Superficies translúcidas se vuelven sólidas si el usuario lo pide */
+@media (prefers-reduced-transparency: reduce) {
+  .material-chrome {
+    background-color: rgb(var(--material-bg));
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --c-line: 150 160 176;
+    --c-fg-subtle: 80 90 104;
+  }
+  .material-chrome {
+    background-color: rgb(var(--material-bg));
+    backdrop-filter: none;
+  }
+}

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="Rua — Portal de Inteligencia de Negocios y Gestión Académica" />
+    <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1019" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/rua.svg" />
+    <title>Rua · Gestión Académica</title>
+    <script>
+      // Aplica el tema cacheado ANTES del primer pintado. Sin esto se ve un
+      // fogonazo claro antes de que React monte y derive los tokens.
+      try {
+        var c = localStorage.getItem('rua.tema.css')
+        if (c) {
+          var corte = c.indexOf('|')
+          var modo = c.slice(0, corte)
+          var css = c.slice(corte + 1)
+          document.documentElement.setAttribute('style', css)
+          document.documentElement.dataset.theme = modo === 'oscuro' ? 'dark' : 'light'
+        }
+      } catch (_) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

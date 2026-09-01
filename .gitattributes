@@ -1,0 +1,14 @@
+# El repositorio guarda LF; cada quien lo ve con los finales de su sistema.
+# Sin esto, un mismo archivo aparece como "modificado entero" al cambiar de máquina.
+* text=auto eol=lf
+
+# Binarios: nunca convertir
+*.png binary
+*.jpg binary
+*.woff2 binary
+*.xlsx binary
+*.pdf binary
+
+# El SQL y los .sh deben conservar LF aunque se editen en Windows
+*.sql text eol=lf
+*.sh  text eol=lf

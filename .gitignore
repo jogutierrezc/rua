@@ -1,0 +1,17 @@
+node_modules
+dist
+dist-ssr
+*.tsbuildinfo
+*.local
+.env
+.env.local
+.env.*.local
+
+# Repo de skills clonado (no forma parte de la app)
+skills/
+
+# Supabase CLI
+supabase/.branches
+supabase/.temp
+.DS_Store
+*.log
