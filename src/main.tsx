@@ -1,55 +1,34 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'sonner'
 
 import '@fontsource-variable/inter'
 import './index.css'
 
-import { App } from './App'
-import { AuthProvider } from '@/features/auth/AuthProvider'
-import { TemaProvider } from '@/features/apariencia/TemaProvider'
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Los datos siguen siendo válidos medio minuto: evita un refetch en
-      // cada vuelta atrás del navegador sin llegar a servir datos rancios.
-      staleTime: 30_000,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-})
+import { configuracionIncompleta } from '@/lib/entorno'
+import { PantallaConfiguracion } from './PantallaConfiguracion'
 
 const contenedor = document.getElementById('root')
 if (!contenedor) throw new Error('No se encontró el elemento #root')
 
-createRoot(contenedor).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <TemaProvider>
-            <App />
-            <Toaster
-              position="bottom-right"
-              // Los avisos heredan los tokens de la aplicación en vez de traer
-              // su propio blanco: en tema oscuro, un toast claro deslumbra.
-              toastOptions={{
-                classNames: {
-                  toast:
-                    'rounded-md border border-line bg-surface-raised text-fg shadow-overlay text-body',
-                  description: 'text-fg-muted',
-                  success: 'text-success-softFg',
-                  error: 'text-danger-softFg',
-                },
-              }}
-            />
-          </TemaProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
-  </StrictMode>,
-)
+const raiz = createRoot(contenedor)
+
+if (configuracionIncompleta.length > 0) {
+  // Sin credenciales no se puede ni construir el cliente de Supabase. Si se
+  // importara la aplicación, el fallo reventaría el grafo de módulos entero y
+  // el usuario vería una página en blanco: se pinta el diagnóstico y se para.
+  raiz.render(
+    <StrictMode>
+      <PantallaConfiguracion />
+    </StrictMode>,
+  )
+} else {
+  // Importación dinámica a propósito: es lo que permite decidir ANTES de
+  // cargar Supabase, el enrutador y todo lo que depende de ellos.
+  void import('./Aplicacion').then(({ Aplicacion }) => {
+    raiz.render(
+      <StrictMode>
+        <Aplicacion />
+      </StrictMode>,
+    )
+  })
+}

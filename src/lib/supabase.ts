@@ -1,21 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database'
+import { entorno } from './entorno'
 
-const url = import.meta.env.VITE_SUPABASE_URL
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// La validación ocurre en `main.tsx`, ANTES de importar este módulo: si
+// faltaran credenciales, la aplicación ni siquiera se carga y se muestra la
+// pantalla de configuración. Aquí ya se puede dar por hecho que son válidas.
+const { supabaseUrl, supabaseAnonKey } = entorno
 
-/**
- * Fallamos en el arranque y no en la primera consulta: un error claro aquí
- * ahorra media hora persiguiendo un 401 sin contexto.
- */
-if (!url || !anonKey) {
-  throw new Error(
-    'Faltan VITE_SUPABASE_URL y/o VITE_SUPABASE_ANON_KEY.\n' +
-      'Copia .env.example a .env.local y rellena las credenciales de tu proyecto Supabase.',
-  )
-}
-
-export const supabase = createClient<Database>(url, anonKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
