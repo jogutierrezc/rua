@@ -81,6 +81,61 @@ Cuentas de demostración (sólo tras `seed.sql`), contraseña `Rua.2026`:
 
 ---
 
+## Despliegue en Vercel
+
+El preset de Vite funciona tal cual, pero hay **dos cosas** que hay que
+configurar o la aplicación falla de formas poco evidentes. Ambas están
+resueltas en el repositorio.
+
+### 1 · Las rutas profundas necesitan un rewrite
+
+Rua usa `BrowserRouter`: `/solicitudes/<id>` no existe como archivo. Al
+recargar la página o abrir un enlace directo, el servidor busca ese fichero,
+no lo encuentra y devuelve **404**. `vercel.json` reenvía todo a
+`index.html`; los rewrites se evalúan después del sistema de archivos, así que
+los assets reales se siguen sirviendo con normalidad.
+
+### 2 · Las variables se incrustan al COMPILAR
+
+Vite sustituye `import.meta.env.VITE_*` por literales durante el build. Si no
+están definidas en ese momento, el bundle sale con `undefined` dentro y **no
+hay forma de arreglarlo desde el servidor**: hay que volver a compilar.
+
+Es la trampa clásica — se añaden las variables en Vercel después del primer
+despliegue y nadie entiende por qué la página sigue rota. Por eso, cuando
+faltan, la aplicación **no arranca en blanco**: `main.tsx` lo detecta antes de
+importar Supabase y pinta una pantalla que dice qué falta y que hay que
+redesplegar.
+
+```
+Settings → Environment Variables
+  VITE_SUPABASE_URL       = https://<tu-proyecto>.supabase.co
+  VITE_SUPABASE_ANON_KEY  = eyJ...
+```
+
+### Lo que Vercel NO despliega
+
+Sólo aloja el frontend. Estas dos cosas viven en Supabase y se despliegan
+aparte:
+
+```bash
+supabase db push                                  # las 14 migraciones
+supabase functions deploy crear-usuario
+supabase functions deploy restablecer-contrasena
+```
+
+Conviene además añadir el dominio de Vercel en Supabase →
+Authentication → URL Configuration, o los enlaces de recuperación de
+contraseña apuntarán a `localhost`.
+
+### Caché
+
+Los assets llevan hash en el nombre, así que se cachean un año como
+`immutable`. El `index.html` **no** se cachea: es lo que apunta a esos assets,
+y si se quedara guardado un despliegue nuevo seguiría pidiendo los ficheros
+antiguos.
+---
+
 ## Modelo de datos
 
 ```
