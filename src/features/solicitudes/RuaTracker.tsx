@@ -301,6 +301,12 @@ interface Hito {
   autor?: { nombre: string; avatar: string | null; rol: string | null }
   comentario?: string | null
   tono: 'inicio' | 'exito' | 'peligro' | 'activo' | 'espera'
+  /**
+   * La firmó la administración saltándose el flujo, no la oficina que figura
+   * en la etapa. Se dice en voz alta: un expediente donde ambas firmas se ven
+   * igual convierte el historial en algo que no se puede usar para auditar.
+   */
+  administrativa?: boolean
 }
 
 function construirHitos(
@@ -347,6 +353,7 @@ function construirHitos(
         ? { nombre: e.revisor_nombre, avatar: e.revisor_avatar, rol: e.revisor_rol }
         : undefined,
       comentario: e.justificacion,
+      administrativa: e.firmada_por_admin,
       tono:
         e.estado === 'aprobada' ? 'exito' : e.estado === 'denegada' ? 'peligro' : 'activo',
     })
@@ -388,10 +395,21 @@ function LineaDeTiempo({ hitos }: { hitos: Hito[] }) {
           </div>
 
           {h.autor && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-body-sm text-fg-muted">
+            <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-body-sm text-fg-muted">
               <Avatar nombre={h.autor.nombre} url={h.autor.avatar} size="sm" />
               <span className="truncate">{h.autor.nombre}</span>
               {h.autor.rol && <span className="truncate text-fg-subtle">· {h.autor.rol}</span>}
+              {h.administrativa && (
+                <span
+                  title="La administración firmó en nombre de esta oficina, sin esperar a su turno en el flujo."
+                  className={cn(
+                    'rounded border border-warning/30 bg-warning-soft px-1.5 py-px',
+                    'text-body-sm text-warning-softFg',
+                  )}
+                >
+                  Firma administrativa
+                </span>
+              )}
             </p>
           )}
 

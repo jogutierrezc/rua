@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Check,
   ChevronRight,
   Folder,
+  Gavel,
   Info,
   Loader2,
   ShieldAlert,
@@ -38,6 +39,16 @@ export function DialogoSolicitud({
 
   const [justificacion, setJustificacion] = useState('')
   const [confirmando, setConfirmando] = useState<'aprobar' | 'denegar' | null>(null)
+
+  /**
+   * Resolución administrativa: firmar la cadena entera de una vez.
+   *
+   * Es un modo aparte y no el pie de siempre con más botones, a propósito.
+   * Saltarse el flujo no es una variante de firmar una etapa; es otra cosa, y
+   * la pantalla tiene que costar el gesto de entrar en ella.
+   */
+  const [modoAdmin, setModoAdmin] = useState(false)
+  const [justificaciones, setJustificaciones] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar()
@@ -79,6 +90,37 @@ export function DialogoSolicitud({
     onError: (e) => toast.error(mensajeDeError(e)),
   })
 
+  const resolverAdmin = useMutation({
+    mutationFn: async (aprobar: boolean) => {
+      const { data, error } = await supabase.rpc('fn_resolver_solicitud_admin', {
+        p_solicitud_id: solicitudId,
+        p_aprobar: aprobar,
+        p_justificaciones: Object.fromEntries(
+          Object.entries(justificaciones).map(([codigo, texto]) => [codigo, texto.trim()]),
+        ),
+      })
+      if (error) throw error
+      return data?.[0]
+    },
+    onSuccess: (r) => {
+      const firmas = r?.etapas_firmadas ?? 0
+      toast.success(
+        r?.estado_solicitud === 'aprobada'
+          ? `Expediente aprobado · ${firmas} ${firmas === 1 ? 'firma' : 'firmas'}`
+          : 'Solicitud denegada',
+        { description: 'Queda registrado en el expediente que la firma fue administrativa.' },
+      )
+      setJustificaciones({})
+      setModoAdmin(false)
+      setConfirmando(null)
+      void qc.invalidateQueries({ queryKey: ['expediente'] })
+      void qc.invalidateQueries({ queryKey: ['solicitudes'] })
+      void qc.invalidateQueries({ queryKey: ['metricas'] })
+      dispararEnvioCorreos()
+    },
+    onError: (e) => toast.error(mensajeDeError(e)),
+  })
+
   const s = data?.solicitud
   const etapaVigente = data?.etapas.find((e) => e.estado === 'pendiente')
   // La última etapa no sólo aprueba: crea la actividad. Firmarla sin saberlo
@@ -93,6 +135,29 @@ export function DialogoSolicitud({
 
   const largo = justificacion.trim().length
   const suficiente = largo >= MIN_JUSTIFICACION
+
+  // Lo que queda por firmar, en el orden de la cadena: la etapa vigente y las
+  // que aún están bloqueadas detrás de ella.
+  const restantes = useMemo(
+    () =>
+      (data?.etapas ?? [])
+        .filter((e) => e.estado === 'pendiente' || e.estado === 'bloqueada')
+        .sort((a, b) => a.orden - b.orden),
+    [data],
+  )
+
+  // La guardia de autofirma tampoco se levanta aquí, igual que en la base: el
+  // atajo es sobre el ORDEN del flujo, no sobre quién puede firmar qué.
+  const puedeResolverAdmin =
+    puede('roles.administrar') && restantes.length > 0 && s?.solicitante_id !== perfil?.id
+
+  const largoDe = (codigo: string) => (justificaciones[codigo] ?? '').trim().length
+  const todasEscritas =
+    restantes.length > 0 && restantes.every((e) => largoDe(e.etapa_codigo) >= MIN_JUSTIFICACION)
+  // Denegar detiene la cadena donde esté: sólo hace falta el motivo de la
+  // etapa vigente, no el de las que ya nunca se van a firmar.
+  const denegable = Boolean(etapaVigente) && largoDe(etapaVigente!.etapa_codigo) >= MIN_JUSTIFICACION
+  const materializaAlguna = restantes.some((e) => e.materializa)
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
@@ -232,6 +297,153 @@ export function DialogoSolicitud({
                   ? 'Es un borrador: aún no ha entrado en el flujo de validación.'
                   : `Expediente cerrado ${s.resuelto_por_nombre ? `por ${s.resuelto_por_nombre}` : ''} · ${fechaRelativa(s.resuelto_en)}`}
               </p>
+            ) : modoAdmin ? (
+              <div className="flex flex-col gap-3">
+                <div
+                  className={cn(
+                    'flex items-start gap-2 rounded-md border px-3 py-2.5 text-body-sm',
+                    'border-warning/30 bg-warning-soft text-warning-softFg',
+                  )}
+                >
+                  <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+                  <span>
+                    Vas a firmar en nombre de {restantes.length}{' '}
+                    {restantes.length === 1 ? 'oficina' : 'oficinas'} sin esperar su turno. Cada
+                    firma queda marcada como administrativa en el expediente, con tu nombre y el
+                    motivo que escribas para cada una.
+                  </span>
+                </div>
+
+                {/* Una justificación por rol, no una para todos. Un comentario
+                    único para tres firmas sería la mitad de trabajo y el doble
+                    de daño: nadie podría auditar después por qué se aprobó en
+                    nombre de cada oficina. */}
+                <ol className="flex flex-col gap-3">
+                  {restantes.map((e, i) => {
+                    const texto = justificaciones[e.etapa_codigo] ?? ''
+                    const l = texto.trim().length
+                    return (
+                      <li key={e.id}>
+                        <label
+                          htmlFor={`justificacion-${e.etapa_codigo}`}
+                          className="flex flex-wrap items-baseline justify-between gap-2 text-label text-fg"
+                        >
+                          <span>
+                            {i + 1}. {e.etapa_nombre}
+                            {e.materializa && (
+                              <span className="ml-2 rounded border border-line px-1.5 py-px text-body-sm font-normal text-fg-muted">
+                                crea la actividad
+                              </span>
+                            )}
+                            <span aria-hidden className="ml-0.5 text-danger">
+                              *
+                            </span>
+                          </span>
+                          <span
+                            className={cn(
+                              'tabular text-body-sm',
+                              l >= MIN_JUSTIFICACION ? 'text-success' : 'text-fg-subtle',
+                            )}
+                          >
+                            {l} / {MIN_JUSTIFICACION} mín.
+                          </span>
+                        </label>
+                        <Textarea
+                          id={`justificacion-${e.etapa_codigo}`}
+                          rows={2}
+                          className="mt-1.5"
+                          placeholder={`Por qué se aprueba en nombre de ${e.etapa_nombre}.`}
+                          value={texto}
+                          onChange={(ev) =>
+                            setJustificaciones((j) => ({ ...j, [e.etapa_codigo]: ev.target.value }))
+                          }
+                        />
+                      </li>
+                    )
+                  })}
+                </ol>
+
+                {confirmando ? (
+                  <div
+                    className={cn(
+                      'flex flex-wrap items-center gap-3 rounded-md border px-3 py-2.5',
+                      'motion-safe:animate-fade-rise',
+                      confirmando === 'aprobar'
+                        ? 'border-success/30 bg-success-soft text-success-softFg'
+                        : 'border-danger/30 bg-danger-soft text-danger-softFg',
+                    )}
+                  >
+                    <span className="text-body-sm">
+                      {confirmando === 'aprobar'
+                        ? `Se firmarán ${restantes.length} etapas en tu nombre y el expediente quedará aprobado` +
+                          (materializaAlguna
+                            ? s.tipo === 'crear'
+                              ? ', creando la actividad en la estructura maestra.'
+                              : s.tipo === 'eliminar'
+                                ? ', archivando la actividad en la estructura.'
+                                : ', aplicando los cambios sobre la actividad.'
+                            : '.')
+                        : `La solicitud quedará denegada en ${etapaVigente.etapa_nombre} y la cadena se detiene ahí.`}
+                    </span>
+                    <div className="ml-auto flex gap-2">
+                      <Button tamano="sm" onClick={() => setConfirmando(null)}>
+                        Volver
+                      </Button>
+                      <Button
+                        tamano="sm"
+                        variante={confirmando === 'aprobar' ? 'primario' : 'peligro'}
+                        cargando={resolverAdmin.isPending}
+                        onClick={() => resolverAdmin.mutate(confirmando === 'aprobar')}
+                        iconoIzq={
+                          resolverAdmin.isPending ? (
+                            <Loader2 className="size-4 animate-spin" />
+                          ) : confirmando === 'aprobar' ? (
+                            <Check className="size-4" />
+                          ) : (
+                            <Trash2 className="size-4" />
+                          )
+                        }
+                      >
+                        Confirmar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button
+                      className="mr-auto"
+                      onClick={() => {
+                        setModoAdmin(false)
+                        setJustificaciones({})
+                      }}
+                    >
+                      Volver al flujo normal
+                    </Button>
+                    <Button
+                      variante="peligro"
+                      disabled={!denegable}
+                      title={
+                        denegable
+                          ? undefined
+                          : `Escribe primero el motivo en ${etapaVigente.etapa_nombre}`
+                      }
+                      onClick={() => setConfirmando('denegar')}
+                      iconoIzq={<X className="size-4" />}
+                    >
+                      Denegar
+                    </Button>
+                    <Button
+                      variante="primario"
+                      disabled={!todasEscritas}
+                      title={todasEscritas ? undefined : 'Falta la justificación de alguna oficina'}
+                      onClick={() => setConfirmando('aprobar')}
+                      iconoIzq={<Gavel className="size-4" />}
+                    >
+                      Aprobar y cerrar ({restantes.length})
+                    </Button>
+                  </div>
+                )}
+              </div>
             ) : !puedoFirmar ? (
               <p className="flex items-start gap-2 text-body-sm text-fg-muted">
                 <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-subtle" />
@@ -323,6 +535,15 @@ export function DialogoSolicitud({
                   </div>
                 ) : (
                   <div className="flex flex-wrap justify-end gap-2">
+                    {puedeResolverAdmin && restantes.length > 1 && (
+                      <Button
+                        className="mr-auto"
+                        onClick={() => setModoAdmin(true)}
+                        iconoIzq={<Gavel className="size-4" />}
+                      >
+                        Resolver como administración
+                      </Button>
+                    )}
                     <Button onClick={onCerrar}>Cerrar</Button>
                     <Button
                       variante="peligro"

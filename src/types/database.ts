@@ -245,6 +245,12 @@ export type SolicitudEtapaRow = {
   revisor_rol: string | null
   /** Al aprobar esta etapa, el cambio se aplica sobre la estructura. */
   materializa: boolean
+  /**
+   * La firmó la administración saltándose el flujo, no la oficina que le
+   * correspondía. Se muestra en el expediente: las dos firmas no son lo mismo
+   * y confundirlas falsearía el historial.
+   */
+  firmada_por_admin: boolean
 }
 
 /** Lo que devuelve `fn_decidir_etapa`. */
@@ -253,6 +259,14 @@ export type ResultadoDecision = {
   siguiente_etapa: string | null
   estado_solicitud: EstadoSolicitud
   /** Id de la actividad creada o afectada, si la etapa materializaba. */
+  actividad_id: string | null
+}
+
+/** Lo que devuelve `fn_resolver_solicitud_admin`. */
+export type ResultadoResolucionAdmin = {
+  /** Cuántas etapas quedaron firmadas de una vez. */
+  etapas_firmadas: number
+  estado_solicitud: EstadoSolicitud
   actividad_id: string | null
 }
 
@@ -477,6 +491,15 @@ export interface Database {
       fn_decidir_etapa: {
         Args: { p_solicitud_id: string; p_aprobar: boolean; p_justificacion: string }
         Returns: ResultadoDecision[]
+      }
+      fn_resolver_solicitud_admin: {
+        Args: {
+          p_solicitud_id: string
+          p_aprobar: boolean
+          /** Una justificación por código de etapa. */
+          p_justificaciones: Record<string, string>
+        }
+        Returns: ResultadoResolucionAdmin[]
       }
       fn_reordenar_etapas: { Args: { p_codigos: string[] }; Returns: undefined }
       fn_abrir_periodo: {
