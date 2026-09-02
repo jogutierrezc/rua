@@ -41,6 +41,7 @@ export interface RutaMenu {
 
 export const GRUPOS_POR_DEFECTO: { codigo: string; titulo: string }[] = [
   { codigo: 'analisis', titulo: 'Análisis' },
+  { codigo: 'planeacion', titulo: 'Planeación Estratégica' },
   { codigo: 'operacion', titulo: 'Operación' },
   { codigo: 'administracion', titulo: 'Administración' },
 ]
@@ -92,6 +93,38 @@ export const RUTAS_MENU: RutaMenu[] = [
     permiso: 'actividades.ver',
     icono: 'CalendarClock',
     grupo: 'operacion',
+  },
+  {
+    ruta: '/planeacion/snies',
+    inicial: true,
+    etiqueta: 'Programas SNIES',
+    permiso: 'planeacion.ver',
+    icono: 'Database',
+    grupo: 'planeacion',
+  },
+  {
+    ruta: '/planeacion/programas',
+    inicial: true,
+    etiqueta: 'Programas UDES',
+    permiso: 'planeacion.ver',
+    icono: 'BookOpen',
+    grupo: 'planeacion',
+  },
+  {
+    ruta: '/planeacion/otra',
+    inicial: true,
+    etiqueta: 'Otra Información de Programas',
+    permiso: 'planeacion.ver',
+    icono: 'ClipboardList',
+    grupo: 'planeacion',
+  },
+  {
+    ruta: '/planeacion/cupos',
+    inicial: true,
+    etiqueta: 'Proyección de Cupos',
+    permiso: 'planeacion.ver',
+    icono: 'Target',
+    grupo: 'planeacion',
   },
   {
     ruta: '/usuarios',

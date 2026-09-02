@@ -18,6 +18,12 @@ import { PeriodosPage } from '@/features/periodos/PeriodosPage'
 import { FlujoPage } from '@/features/flujo/FlujoPage'
 import { CorreoPage } from '@/features/correo/CorreoPage'
 import { MenuPage } from '@/features/menu/MenuPage'
+import { ProgramasUdesPage } from '@/features/planeacion/ProgramasUdesPage'
+import {
+  OtraInformacionPage,
+  ProgramasSniesPage,
+  ProyeccionCuposPage,
+} from '@/features/planeacion/EnDesarrollo'
 import { TutorialPage } from '@/features/tutorial/TutorialPage'
 import { EmptyState } from '@/components/ui/primitives'
 import { LinkButton } from '@/components/ui/LinkButton'
@@ -97,6 +103,44 @@ export function App() {
               </RequierePermiso>
             }
           />
+
+          {/* Planeación Estratégica. Los tres submódulos vacíos están
+              declarados a propósito: el módulo tiene su forma final desde el
+              principio y lo único que cambia es que se van llenando. */}
+          <Route path="planeacion">
+            <Route
+              path="snies"
+              element={
+                <RequierePermiso permiso="planeacion.ver">
+                  <ProgramasSniesPage />
+                </RequierePermiso>
+              }
+            />
+            <Route
+              path="programas"
+              element={
+                <RequierePermiso permiso="planeacion.ver">
+                  <ProgramasUdesPage />
+                </RequierePermiso>
+              }
+            />
+            <Route
+              path="otra"
+              element={
+                <RequierePermiso permiso="planeacion.ver">
+                  <OtraInformacionPage />
+                </RequierePermiso>
+              }
+            />
+            <Route
+              path="cupos"
+              element={
+                <RequierePermiso permiso="planeacion.ver">
+                  <ProyeccionCuposPage />
+                </RequierePermiso>
+              }
+            />
+          </Route>
 
           <Route
             path="usuarios"

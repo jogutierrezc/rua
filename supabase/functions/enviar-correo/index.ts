@@ -292,6 +292,20 @@ Deno.serve(async (req) => {
   }
 
   // ---------------------------------------------------------------------------
+  // Avisos que se generan solos
+  //
+  // Antes de vaciar la cola se rellena con lo que el calendario haya vencido:
+  // hoy, los registros calificados a menos de tres meses. Va aquí y no en un
+  // temporizador propio porque ya existe uno que corre a diario para esta
+  // función, y un segundo cron es una cosa más que puede quedarse parada sin
+  // que nadie se entere.
+  //
+  // No es fatal: si falla, se sigue enviando lo que ya estaba encolado.
+  // ---------------------------------------------------------------------------
+  const { error: errAvisos } = await admin.rpc('fn_encolar_avisos_vencimiento')
+  if (errAvisos) console.error('No se pudieron generar los preavisos:', errAvisos)
+
+  // ---------------------------------------------------------------------------
   // Lote pendiente
   // ---------------------------------------------------------------------------
   const { data: pendientes, error: errCola } = await admin

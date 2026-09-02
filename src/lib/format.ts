@@ -37,10 +37,53 @@ export function fechaRelativa(iso: string | null | undefined): string {
   return fmtFechaLarga.format(d)
 }
 
+/**
+ * Una fecha sin hora, interpretada en la zona de quien mira.
+ *
+ * `new Date('2026-03-12')` se interpreta como medianoche UTC, y Colombia va
+ * cinco horas por detrás: la fecha se veía siempre un día antes. Con fecha y
+ * hora completas no pasa, y por eso el fallo sólo asoma en las columnas de
+ * tipo `date` — vencimientos y resoluciones, justo donde un día importa.
+ */
+function aFechaLocal(iso: string): Date {
+  const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!soloFecha) return new Date(iso)
+  const [, a, m, d] = soloFecha
+  return new Date(Number(a), Number(m) - 1, Number(d))
+}
+
 export function fechaLarga(iso: string | null | undefined): string {
   if (!iso) return '—'
-  const d = new Date(iso)
+  const d = aFechaLocal(iso)
   return Number.isNaN(d.getTime()) ? '—' : fmtFechaLarga.format(d)
+}
+
+/**
+ * El plazo que queda, en la unidad que la gente usa para hablar de él.
+ *
+ * «en 428 días» no le dice nada a nadie; «en 1 año y 2 meses» sí. Y por debajo
+ * de dos meses se vuelve a los días, porque ahí la cuenta atrás importa al día.
+ */
+export function tiempoRestante(dias: number | null | undefined): string {
+  if (dias === null || dias === undefined) return 'Sin registro'
+
+  if (dias < 0) {
+    const v = Math.abs(dias)
+    if (v < 60) return `Vencido hace ${v} ${v === 1 ? 'día' : 'días'}`
+    const meses = Math.floor(v / 30)
+    return `Vencido hace ${meses} ${meses === 1 ? 'mes' : 'meses'}`
+  }
+
+  if (dias === 0) return 'Vence hoy'
+  if (dias < 60) return `${dias} ${dias === 1 ? 'día' : 'días'}`
+
+  const meses = Math.floor(dias / 30)
+  if (meses < 12) return `${meses} meses`
+
+  const anos = Math.floor(meses / 12)
+  const resto = meses % 12
+  const parteAnos = `${anos} ${anos === 1 ? 'año' : 'años'}`
+  return resto === 0 ? parteAnos : `${parteAnos} y ${resto} ${resto === 1 ? 'mes' : 'meses'}`
 }
 
 /** Iniciales para el avatar de respaldo. Refleja fn_iniciales() en la base. */

@@ -59,6 +59,8 @@ export type CodigoPermiso =
   | 'solicitudes.validar_financiera'
   | 'solicitudes.validar_auditoria'
   | 'auditoria.consultar'
+  | 'planeacion.ver'
+  | 'planeacion.administrar'
 
 // -----------------------------------------------------------------------------
 // Filas
@@ -458,6 +460,82 @@ export type MenuEntradaRow = {
   actualizado_en: string
 }
 
+// -----------------------------------------------------------------------------
+// Planeación Estratégica
+// -----------------------------------------------------------------------------
+export type NivelPrograma =
+  | 'tecnico_profesional'
+  | 'tecnologico'
+  | 'profesional'
+  | 'especializacion'
+  | 'especializacion_medico_quirurgica'
+  | 'maestria'
+  | 'doctorado'
+
+export type ModalidadPrograma = 'presencial' | 'distancia' | 'virtual' | 'dual'
+
+export type TipoCupos = 'trimestral' | 'semestral' | 'anual' | 'cohorte' | 'variacion_por_cohortes'
+
+/** Cómo de cerca está el vencimiento del registro calificado. Lo calcula la vista. */
+export type EstadoVigencia = 'sin_registro' | 'vencido' | 'por_vencer' | 'proximo' | 'vigente'
+
+export type ProgramaUdesRow = {
+  id: string
+  codigo_unico: string
+  snies: string | null
+  facultad: string
+  nivel: NivelPrograma
+  nombre: string
+  campus: string
+  modalidad: ModalidadPrograma
+
+  rc_resolucion: string | null
+  rc_fecha_registro: string | null
+  rc_fecha_vencimiento: string | null
+  /** Ruta del objeto en el bucket `registros-calificados`, no una URL pública. */
+  rc_archivo_ruta: string | null
+  rc_archivo_nombre: string | null
+
+  ac_resolucion: string | null
+  ac_fecha_resolucion: string | null
+
+  cupos_aprobados: number | null
+  tipo_cupos: TipoCupos | null
+  ano_creacion: number | null
+  cumple_ci_para_ac: boolean
+
+  aviso_vencimiento_en: string | null
+  estado: EstadoRegistro
+  creado_por: string | null
+  creado_en: string
+  actualizado_en: string
+}
+
+/** El programa con el plazo ya calculado. La vista es la única fuente del conteo. */
+export type ProgramaUdesDetalleRow = ProgramaUdesRow & {
+  dias_para_vencimiento: number | null
+  estado_vigencia: EstadoVigencia
+  total_observaciones: number
+  creado_por_nombre: string | null
+}
+
+/**
+ * Una observación sobre un programa.
+ *
+ * El nombre y el rol vienen congelados del momento en que se escribió: los
+ * roles cambian, y la observación tiene que conservar con qué autoridad se
+ * hizo. Los sella un trigger, no el cliente.
+ */
+export type ProgramaObservacionRow = {
+  id: string
+  programa_id: string
+  autor_id: string | null
+  autor_nombre: string
+  autor_rol: string | null
+  comentario: string
+  creado_en: string
+}
+
 export type ConfigCorreo = {
   activo?: boolean
   remitente?: string
@@ -558,6 +636,8 @@ export interface Database {
       auditoria: Tabla<AuditoriaRow>
       configuracion: Tabla<ConfiguracionRow>
       plantillas_correo: Tabla<PlantillaCorreoRow>
+      programas_udes: Tabla<ProgramaUdesRow>
+      programa_observaciones: Tabla<ProgramaObservacionRow>
       menu_grupos: Tabla<MenuGrupoRow>
       menu_entradas: Tabla<MenuEntradaRow>
       correos: Tabla<CorreoRow>
@@ -568,6 +648,7 @@ export interface Database {
       v_periodos_detalle: { Row: PeriodoDetalleRow; Relationships: [] }
       v_solicitud_etapas: { Row: SolicitudEtapaRow; Relationships: [] }
       v_solicitud_actividades: { Row: SolicitudActividadDetalleRow; Relationships: [] }
+      v_programas_udes: { Row: ProgramaUdesDetalleRow; Relationships: [] }
       v_etapas_configuracion: { Row: EtapaConfiguracionRow; Relationships: [] }
     }
     Functions: {
