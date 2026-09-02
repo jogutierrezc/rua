@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
@@ -45,12 +45,66 @@ const CLAVE_PLEGADOS = 'rua.menu.plegados'
 function leerPlegados(): string[] {
   try {
     const crudo = localStorage.getItem(CLAVE_PLEGADOS)
-    return crudo ? (JSON.parse(crudo) as string[]) : []
+    const valor: unknown = crudo ? JSON.parse(crudo) : []
+    // Se valida la forma: un `localStorage` con basura no puede tumbar el menú.
+    return Array.isArray(valor) ? valor.filter((x): x is string => typeof x === 'string') : []
   } catch {
     // Ventana privada, almacenamiento bloqueado, JSON corrupto. Nada de esto
     // debe impedir que se pinte el menú.
     return []
   }
+}
+
+function guardarPlegados(codigos: string[]) {
+  try {
+    localStorage.setItem(CLAVE_PLEGADOS, JSON.stringify(codigos))
+  } catch {
+    // Se pierde la preferencia, no la navegación.
+  }
+}
+
+/**
+ * El estado del plegado, UNO para toda la aplicación.
+ *
+ * Vivía dentro de `Lateral`, y `Lateral` se monta dos veces: la barra fija de
+ * escritorio y el cajón del móvil. Eran dos estados distintos sobre la misma
+ * preferencia, así que plegar en uno no se reflejaba en el otro.
+ */
+function usePlegados() {
+  const [plegados, setPlegados] = useState<string[]>(leerPlegados)
+
+  const alternar = useCallback((codigo: string) => {
+    setPlegados((prev) => {
+      const siguiente = prev.includes(codigo)
+        ? prev.filter((c) => c !== codigo)
+        : [...prev, codigo]
+      guardarPlegados(siguiente)
+      return siguiente
+    })
+  }, [])
+
+  const desplegar = useCallback((codigo: string) => {
+    setPlegados((prev) => {
+      if (!prev.includes(codigo)) return prev
+      const siguiente = prev.filter((c) => c !== codigo)
+      guardarPlegados(siguiente)
+      return siguiente
+    })
+  }, [])
+
+  return { plegados, alternar, desplegar }
+}
+
+/**
+ * ¿Esta ruta está dentro de esta entrada?
+ *
+ * Con `startsWith` a secas, `/periodos` caía dentro de `/periodo`: dos grupos
+ * distintos se daban por activos a la vez. La comparación tiene que ser por
+ * segmentos completos, no por prefijo de texto.
+ */
+function rutaActiva(pathname: string, ruta: string, exacta: boolean) {
+  if (exacta || ruta === '/') return pathname === ruta
+  return pathname === ruta || pathname.startsWith(`${ruta}/`)
 }
 
 // -----------------------------------------------------------------------------
@@ -87,26 +141,41 @@ function AlternadorModo() {
 // -----------------------------------------------------------------------------
 // Barra lateral
 // -----------------------------------------------------------------------------
-function Lateral({ onNavegar }: { onNavegar?: () => void }) {
+function Lateral({
+  onNavegar,
+  plegados,
+  alternar,
+  desplegar,
+}: {
+  onNavegar?: () => void
+  plegados: string[]
+  alternar: (codigo: string) => void
+  desplegar: (codigo: string) => void
+}) {
   const { perfil, rol, vicerrectoria, salir } = useAuth()
   const { grupos } = useMenu()
   const { pathname } = useLocation()
   const [menuAbierto, setMenuAbierto] = useState(false)
-  const [plegados, setPlegados] = useState<string[]>(leerPlegados)
 
-  function alternarGrupo(codigo: string) {
-    setPlegados((prev) => {
-      const siguiente = prev.includes(codigo)
-        ? prev.filter((c) => c !== codigo)
-        : [...prev, codigo]
-      try {
-        localStorage.setItem(CLAVE_PLEGADOS, JSON.stringify(siguiente))
-      } catch {
-        // Se pierde la preferencia, no la navegación.
-      }
-      return siguiente
-    })
-  }
+  const codigoActivo = useMemo(
+    () =>
+      grupos.find((g) => g.entradas.some((e) => rutaActiva(pathname, e.ruta, e.exacta)))?.codigo,
+    [grupos, pathname],
+  )
+
+  /**
+   * Al ENTRAR en un grupo plegado, se despliega.
+   *
+   * Es un cambio de estado y no una anulación en tiempo de render, y ahí está
+   * toda la diferencia: antes el render reabría el grupo activo en cada pasada,
+   * así que pulsar su cabecera no hacía nada visible —el clic sí cambiaba el
+   * estado, y el grupo se cerraba solo más tarde, al navegar—. Ahora el clic
+   * manda: sólo se vuelve a desplegar cuando se entra desde OTRO grupo, porque
+   * la dependencia es el código activo y no cada render.
+   */
+  useEffect(() => {
+    if (codigoActivo) desplegar(codigoActivo)
+  }, [codigoActivo, desplegar])
 
   return (
     <div className="flex h-full flex-col bg-surface">
@@ -116,12 +185,7 @@ function Lateral({ onNavegar }: { onNavegar?: () => void }) {
 
       <nav aria-label="Navegación principal" className="flex-1 overflow-y-auto px-2.5 py-4">
         {grupos.map((grupo) => {
-          // El grupo de la ruta activa se despliega aunque estuviera plegado:
-          // esconder dónde estás parado desorienta más de lo que ahorra.
-          const contieneActiva = grupo.entradas.some(
-            (e) => (e.exacta ? pathname === e.ruta : pathname.startsWith(e.ruta)),
-          )
-          const abierto = contieneActiva || !plegados.includes(grupo.codigo)
+          const abierto = !plegados.includes(grupo.codigo)
           const idLista = `grupo-${grupo.codigo}`
 
           return (
@@ -129,7 +193,7 @@ function Lateral({ onNavegar }: { onNavegar?: () => void }) {
               <h2>
                 <button
                   type="button"
-                  onClick={() => alternarGrupo(grupo.codigo)}
+                  onClick={() => alternar(grupo.codigo)}
                   aria-expanded={abierto}
                   aria-controls={idLista}
                   className={cn(
@@ -155,7 +219,28 @@ function Lateral({ onNavegar }: { onNavegar?: () => void }) {
                   )}
                 </button>
               </h2>
-              <ul id={idLista} hidden={!abierto} className="flex flex-col gap-0.5 pt-0.5">
+              {/* Rejilla de una fila que pasa de 0fr a 1fr: es la única forma
+                  de animar «hasta el alto que ocupe» sin medirlo en JavaScript
+                  ni fijar una altura que se rompa al añadir entradas. El
+                  ajuste de movimiento reducido es global (`index.css`).
+
+                  `inert` en vez de `hidden` porque el contenido sigue en el
+                  DOM mientras se anima: sin él, los enlaces de un grupo
+                  plegado seguirían recibiendo el foco con el tabulador. */}
+              <div
+                id={idLista}
+                inert={!abierto}
+                className={cn(
+                  'grid transition-[grid-template-rows] duration-200 ease-out',
+                  // Se recorta para poder animar el alto, y se ensancha 6px por
+                  // lado para compensarlo: el anillo de foco se dibuja 4px POR
+                  // FUERA del enlace, y sin este hueco quedaría cortado justo
+                  // para quien navega con el teclado.
+                  '-mx-1.5 overflow-hidden px-1.5',
+                  abierto ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+                )}
+              >
+              <ul className="flex min-h-0 flex-col gap-0.5 py-1">
                 {grupo.entradas.map(({ codigo, ruta, etiqueta, icono, exacta }) => {
                   const Icono = iconoDe(icono)
                   return (
@@ -190,6 +275,7 @@ function Lateral({ onNavegar }: { onNavegar?: () => void }) {
                   )
                 })}
               </ul>
+              </div>
             </div>
           )
         })}
@@ -264,6 +350,10 @@ export function AppShell() {
   const [cajonAbierto, setCajonAbierto] = useState(false)
   const location = useLocation()
 
+  // El plegado del menú vive aquí y no dentro de `Lateral`, que se monta dos
+  // veces —barra fija y cajón—: una sola preferencia, un solo estado.
+  const { plegados, alternar, desplegar } = usePlegados()
+
   // Al navegar en móvil, el cajón se cierra solo. Dejarlo abierto sobre la
   // pantalla nueva obliga a un gesto extra que nadie quiere hacer.
   useEffect(() => setCajonAbierto(false), [location.pathname])
@@ -288,7 +378,7 @@ export function AppShell() {
 
       {/* Lateral fija en escritorio */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-sidebar border-r border-line lg:block">
-        <Lateral />
+        <Lateral plegados={plegados} alternar={alternar} desplegar={desplegar} />
       </aside>
 
       {/* Cajón en móvil. Entra y sale por el MISMO lado: si algo desaparece
@@ -307,7 +397,12 @@ export function AppShell() {
             data-motion="transform"
             className="absolute inset-y-0 left-0 w-sidebar animate-[fade-rise_260ms_cubic-bezier(0.32,0.72,0,1)_both] border-r border-line shadow-overlay"
           >
-            <Lateral onNavegar={() => setCajonAbierto(false)} />
+            <Lateral
+              onNavegar={() => setCajonAbierto(false)}
+              plegados={plegados}
+              alternar={alternar}
+              desplegar={desplegar}
+            />
             <button
               onClick={() => setCajonAbierto(false)}
               aria-label="Cerrar navegación"
