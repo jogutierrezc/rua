@@ -21,6 +21,73 @@ import type { EstadoEtapa, SolicitudDetalleRow, SolicitudEtapaRow } from '@/type
 const PLAZO_HABILES = 15
 
 // -----------------------------------------------------------------------------
+// Carril de firmas
+//
+// El Rua Tracker completo es la vista del SOLICITANTE: cuenta la historia con
+// espacio, comentarios y avatares. Cuando alguien está a punto de emitir un
+// concepto, esa misma historia estorba — compite por la atención con lo único
+// que importa en ese momento, que es decidir, y con varias actividades en el
+// expediente la pantalla se vuelve ilegible.
+//
+// Esto es lo mismo reducido a lo que un revisor necesita de reojo: por dónde
+// va la cadena y quién ha firmado ya. El texto de cada concepto sigue estando,
+// en el `title`, para no ocupar sitio hasta que se busca.
+// -----------------------------------------------------------------------------
+const PUNTO: Record<EstadoEtapa, string> = {
+  aprobada: 'bg-success',
+  denegada: 'bg-danger',
+  pendiente: 'bg-accent motion-safe:animate-pulse',
+  bloqueada: 'bg-line-strong',
+  omitida: 'bg-line-strong',
+}
+
+export function CadenaFirmas({
+  etapas,
+  className,
+}: {
+  etapas: SolicitudEtapaRow[]
+  className?: string
+}) {
+  const orden = [...etapas].sort((a, b) => a.orden - b.orden)
+
+  return (
+    <ol className={cn('relative ml-1 border-l border-line pl-4', className)}>
+      {orden.map((e) => (
+        <li
+          key={e.id}
+          title={e.justificacion ?? undefined}
+          className={cn(
+            'relative pb-3 last:pb-0',
+            (e.estado === 'bloqueada' || e.estado === 'omitida') && 'opacity-55',
+          )}
+        >
+          <span
+            aria-hidden
+            className={cn(
+              'absolute -left-[1.3125rem] top-1 size-2.5 rounded-full ring-4 ring-surface',
+              PUNTO[e.estado],
+            )}
+          />
+          <p className="text-body-sm font-medium leading-snug text-fg">{e.etapa_nombre}</p>
+          <p className="text-body-sm text-fg-subtle">
+            {ESTADO_ETAPA[e.estado].etiqueta}
+            {e.decidida_en && ` · ${fechaRelativa(e.decidida_en)}`}
+          </p>
+          {e.revisor_nombre && (
+            <p className="truncate text-body-sm text-fg-muted">{e.revisor_nombre}</p>
+          )}
+          {e.firmada_por_admin && (
+            <span className="mt-0.5 inline-block rounded border border-warning/30 bg-warning-soft px-1.5 py-px text-body-sm text-warning-softFg">
+              Firma administrativa
+            </span>
+          )}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+// -----------------------------------------------------------------------------
 // Fases macro
 //
 // El expediente tiene tres momentos que el solicitante entiende sin explicación:

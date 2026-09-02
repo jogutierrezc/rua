@@ -22,10 +22,19 @@ import { Button } from '@/components/ui/Button'
 import { Textarea } from '@/components/ui/Field'
 import { Avatar, Badge, Card, Skeleton } from '@/components/ui/primitives'
 import { useAuth } from '@/features/auth/AuthProvider'
-import { RuaTracker } from './RuaTracker'
+import { CadenaFirmas, RuaTracker } from './RuaTracker'
 import { useExpediente } from './useExpediente'
 
 const MIN_JUSTIFICACION = 20
+
+/**
+ * Cuántas actividades se enseñan antes de plegar el resto.
+ *
+ * Una reforma de doce actividades convierte la tarjeta en un muro y empuja
+ * fuera de la pantalla lo que hay que decidir. Cinco bastan para hacerse una
+ * idea; el resto está a un clic y no antes.
+ */
+const LINEAS_VISIBLES = 5
 
 export function DialogoSolicitud({
   solicitudId,
@@ -50,6 +59,7 @@ export function DialogoSolicitud({
    */
   const [modoAdmin, setModoAdmin] = useState(false)
   const [justificaciones, setJustificaciones] = useState<Record<string, string>>({})
+  const [verTodasLasLineas, setVerTodasLasLineas] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCerrar()
@@ -147,6 +157,17 @@ export function DialogoSolicitud({
     (e) => e.revisor_id === perfil?.id && (e.estado === 'aprobada' || e.estado === 'denegada'),
   )
 
+  /**
+   * ¿Hay algo que responder aquí y ahora?
+   *
+   * Cambia la forma del diálogo entera. Respondiendo, la pantalla es un sitio
+   * de trabajo: el expediente a la izquierda y la cadena de firmas reducida a
+   * un carril lateral, porque con varias actividades el Rua Tracker completo
+   * compite por la atención con lo único que importa en ese momento. Sólo
+   * mirando, es un sitio de lectura y manda el Rua Tracker.
+   */
+  const respondiendo = Boolean(s) && (puedoFirmar || modoAdmin)
+
   const largo = justificacion.trim().length
   const suficiente = largo >= MIN_JUSTIFICACION
 
@@ -182,7 +203,10 @@ export function DialogoSolicitud({
         aria-modal="true"
         aria-label={`Expediente ${s?.folio ?? ''}`}
         className={cn(
-          'relative my-auto flex w-full max-w-4xl flex-col overflow-hidden rounded-xl',
+          'relative my-auto flex w-full flex-col overflow-hidden rounded-xl',
+          // Respondiendo hace falta sitio para las dos columnas; leyendo, una
+          // caja más estrecha se lee mejor.
+          respondiendo ? 'max-w-6xl' : 'max-w-4xl',
           'border border-line bg-surface shadow-overlay',
           'motion-safe:animate-[fade-rise_220ms_cubic-bezier(0.23,1,0.32,1)_both]',
         )}
@@ -238,141 +262,177 @@ export function DialogoSolicitud({
               <Skeleton className="h-32" />
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
-              {/* Qué se está pidiendo, exactamente */}
-              <Card className="p-4">
-                <h3 className="text-label text-fg">Qué se solicita</h3>
-                <p className="mt-2 whitespace-pre-line text-body leading-relaxed text-fg">
-                  {s.concepto_justificativo}
-                </p>
-              </Card>
-
-              {/* Qué actividades toca, y cómo quedan.
-
-                  Es la tarjeta que decide si el revisor puede firmar con
-                  criterio: sin el valor actual al lado del propuesto, «SUB-014
-                  · Revisión de sílabos» no dice si eso es lo que hay o lo que
-                  se pide. */}
-              {data.lineas.length > 0 && (
+            <div
+              className={cn(
+                'gap-4',
+                respondiendo
+                  ? 'grid items-start lg:grid-cols-[minmax(0,1fr)_15rem]'
+                  : 'flex flex-col',
+              )}
+            >
+              <div className="flex min-w-0 flex-col gap-4">
+                {/* Qué se está pidiendo, exactamente */}
                 <Card className="p-4">
-                  <h3 className="flex items-center gap-2 text-label text-fg">
-                    <Layers aria-hidden className="size-4 text-fg-subtle" />
-                    {data.lineas.length === 1
-                      ? 'Actividad afectada'
-                      : `${data.lineas.length} actividades afectadas`}
-                  </h3>
+                  <h3 className="text-label text-fg">Qué se solicita</h3>
+                  <p className="mt-2 whitespace-pre-line text-body leading-relaxed text-fg">
+                    {s.concepto_justificativo}
+                  </p>
+                </Card>
 
-                  <ul className="mt-3 flex flex-col divide-y divide-line">
-                    {data.lineas.map((l, i) => {
-                      const propuestoCodigo = l.propuesta_codigo ?? l.actual_codigo
-                      const propuestaNomenclatura =
-                        l.propuesta_nomenclatura ?? l.actual_nomenclatura
-                      const cambiaCodigo =
-                        Boolean(l.actual_codigo) && propuestoCodigo !== l.actual_codigo
-                      const cambiaNombre =
-                        Boolean(l.actual_nomenclatura) &&
-                        propuestaNomenclatura !== l.actual_nomenclatura
+                {/* Qué actividades toca, y cómo quedan.
 
-                      return (
-                        <li key={l.id} className="py-2.5 first:pt-0 last:pb-0">
-                          <p className="text-body-sm text-fg-subtle">
-                            {i + 1}.{' '}
-                            {l.principal_codigo ? (
-                              <>
-                                <span className="font-mono">{l.principal_codigo}</span>{' '}
-                                {l.principal_nomenclatura}
-                              </>
-                            ) : (
-                              'Sin pilar declarado'
-                            )}
-                          </p>
+                    Es la tarjeta que decide si el revisor puede firmar con
+                    criterio: sin el valor actual al lado del propuesto, «SUB-014
+                    · Revisión de sílabos» no dice si eso es lo que hay o lo que
+                    se pide. */}
+                {data.lineas.length > 0 && (
+                  <Card className="p-4">
+                    <h3 className="flex items-center gap-2 text-label text-fg">
+                      <Layers aria-hidden className="size-4 text-fg-subtle" />
+                      {data.lineas.length === 1
+                        ? 'Actividad afectada'
+                        : `${data.lineas.length} actividades afectadas`}
+                    </h3>
 
-                          {l.actual_codigo && (
-                            <p
-                              className={cn(
-                                'mt-1 text-body-sm',
-                                cambiaCodigo || cambiaNombre
-                                  ? 'text-fg-subtle line-through'
-                                  : 'text-fg-muted',
+                    <ul className="mt-3 flex flex-col divide-y divide-line">
+                      {(verTodasLasLineas
+                        ? data.lineas
+                        : data.lineas.slice(0, LINEAS_VISIBLES)
+                      ).map((l, i) => {
+                        const propuestoCodigo = l.propuesta_codigo ?? l.actual_codigo
+                        const propuestaNomenclatura =
+                          l.propuesta_nomenclatura ?? l.actual_nomenclatura
+                        const cambiaCodigo =
+                          Boolean(l.actual_codigo) && propuestoCodigo !== l.actual_codigo
+                        const cambiaNombre =
+                          Boolean(l.actual_nomenclatura) &&
+                          propuestaNomenclatura !== l.actual_nomenclatura
+
+                        return (
+                          <li key={l.id} className="py-2.5 first:pt-0 last:pb-0">
+                            <p className="text-body-sm text-fg-subtle">
+                              {i + 1}.{' '}
+                              {l.principal_codigo ? (
+                                <>
+                                  <span className="font-mono">{l.principal_codigo}</span>{' '}
+                                  {l.principal_nomenclatura}
+                                </>
+                              ) : (
+                                'Sin pilar declarado'
                               )}
-                            >
-                              <span className="font-mono">{l.actual_codigo}</span>{' '}
-                              {l.actual_nomenclatura}
                             </p>
-                          )}
 
-                          {s.tipo !== 'eliminar' && (
-                            <p className="mt-0.5 text-body text-fg">
-                              <span className="font-mono text-fg-muted">
-                                {propuestoCodigo ?? '—'}
-                              </span>{' '}
-                              {propuestaNomenclatura ?? 'Sin nomenclatura propuesta'}
-                            </p>
-                          )}
+                            {l.actual_codigo && (
+                              <p
+                                className={cn(
+                                  'mt-1 text-body-sm',
+                                  cambiaCodigo || cambiaNombre
+                                    ? 'text-fg-subtle line-through'
+                                    : 'text-fg-muted',
+                                )}
+                              >
+                                <span className="font-mono">{l.actual_codigo}</span>{' '}
+                                {l.actual_nomenclatura}
+                              </p>
+                            )}
 
-                          {l.aplicada_en && (
-                            <p className="mt-0.5 text-body-sm text-success">
-                              Aplicada {fechaRelativa(l.aplicada_en)}
-                            </p>
+                            {s.tipo !== 'eliminar' && (
+                              <p className="mt-0.5 text-body text-fg">
+                                <span className="font-mono text-fg-muted">
+                                  {propuestoCodigo ?? '—'}
+                                </span>{' '}
+                                {propuestaNomenclatura ?? 'Sin nomenclatura propuesta'}
+                              </p>
+                            )}
+
+                            {l.aplicada_en && (
+                              <p className="mt-0.5 text-body-sm text-success">
+                                Aplicada {fechaRelativa(l.aplicada_en)}
+                              </p>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+
+                    {data.lineas.length > LINEAS_VISIBLES && (
+                      <button
+                        onClick={() => setVerTodasLasLineas((v) => !v)}
+                        aria-expanded={verTodasLasLineas}
+                        className="mt-2 text-body-sm text-primary underline-offset-4 hover:underline"
+                      >
+                        {verTodasLasLineas
+                          ? 'Ver menos'
+                          : `Ver las ${data.lineas.length - LINEAS_VISIBLES} actividades restantes`}
+                      </button>
+                    )}
+                  </Card>
+                )}
+
+                {/* Actividad y subactividades afectadas */}
+                {data.contexto.length > 0 && (
+                  <Card className="p-4">
+                    <h3 className="flex items-center gap-2 text-label text-fg">
+                      <Folder aria-hidden className="size-4 text-fg-subtle" />
+                      Actividad y subactividades afectadas
+                    </h3>
+                    <ul className="mt-3 flex flex-col gap-1.5">
+                      {data.contexto.map((a) => (
+                        <li
+                          key={a.id}
+                          className={cn(
+                            'flex items-center gap-2 rounded-md px-2 py-1.5 text-body-sm',
+                            a.id === s.actividad_id
+                              ? 'bg-primary-soft text-primary-softFg'
+                              : 'text-fg-muted',
+                          )}
+                          style={{ marginLeft: `${(a.nivel - data.contexto[0].nivel) * 1.25}rem` }}
+                        >
+                          {a.id !== s.actividad_id && (
+                            <ChevronRight aria-hidden className="size-3 shrink-0 opacity-50" />
+                          )}
+                          <span className="font-mono">{a.codigo}</span>
+                          <span className="truncate">{a.nomenclatura}</span>
+                          {a.id === s.actividad_id && (
+                            <span className="ml-auto shrink-0 text-overline uppercase">Afectada</span>
                           )}
                         </li>
-                      )
-                    })}
-                  </ul>
-                </Card>
-              )}
+                      ))}
+                    </ul>
+                    <p className="mt-3 flex items-start gap-1.5 text-body-sm text-fg-subtle">
+                      <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+                      {s.tipo === 'eliminar'
+                        ? 'Al aprobar, la actividad y todo lo que cuelga de ella dejarán de estar disponibles.'
+                        : 'El cambio se aplicará sobre esta rama de la estructura.'}
+                    </p>
+                  </Card>
+                )}
 
-              {/* Actividad y subactividades afectadas */}
-              {data.contexto.length > 0 && (
-                <Card className="p-4">
-                  <h3 className="flex items-center gap-2 text-label text-fg">
-                    <Folder aria-hidden className="size-4 text-fg-subtle" />
-                    Actividad y subactividades afectadas
-                  </h3>
-                  <ul className="mt-3 flex flex-col gap-1.5">
-                    {data.contexto.map((a) => (
-                      <li
-                        key={a.id}
-                        className={cn(
-                          'flex items-center gap-2 rounded-md px-2 py-1.5 text-body-sm',
-                          a.id === s.actividad_id
-                            ? 'bg-primary-soft text-primary-softFg'
-                            : 'text-fg-muted',
-                        )}
-                        style={{ marginLeft: `${(a.nivel - data.contexto[0].nivel) * 1.25}rem` }}
-                      >
-                        {a.id !== s.actividad_id && (
-                          <ChevronRight aria-hidden className="size-3 shrink-0 opacity-50" />
-                        )}
-                        <span className="font-mono">{a.codigo}</span>
-                        <span className="truncate">{a.nomenclatura}</span>
-                        {a.id === s.actividad_id && (
-                          <span className="ml-auto shrink-0 text-overline uppercase">Afectada</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="mt-3 flex items-start gap-1.5 text-body-sm text-fg-subtle">
-                    <Info aria-hidden className="mt-0.5 size-3.5 shrink-0" />
-                    {s.tipo === 'eliminar'
-                      ? 'Al aprobar, la actividad y todo lo que cuelga de ella dejarán de estar disponibles.'
-                      : 'El cambio se aplicará sobre esta rama de la estructura.'}
+                {/* Propuesta, cuando se trata de crear algo nuevo */}
+                {s.tipo === 'crear' && s.objetivo_codigo && (
+                  <Card className="p-4">
+                    <h3 className="text-label text-fg">Actividad propuesta</h3>
+                    <p className="mt-2 flex items-center gap-2 text-body text-fg">
+                      <span className="font-mono text-fg-muted">{s.objetivo_codigo}</span>
+                      {s.objetivo_nomenclatura}
+                    </p>
+                  </Card>
+                )}
+
+                {/* Leyendo, el Rua Tracker completo es lo que se viene a ver.
+                    Respondiendo no se pinta: su sitio lo ocupa el carril. */}
+                {!respondiendo && <RuaTracker solicitud={s} etapas={data.etapas} compacto />}
+              </div>
+
+              {respondiendo && (
+                <Card className="p-4 lg:sticky lg:top-0">
+                  <h3 className="text-label text-fg">Cadena de firmas</h3>
+                  <CadenaFirmas etapas={data.etapas} className="mt-3" />
+                  <p className="mt-3 border-t border-line pt-3 text-body-sm text-fg-subtle">
+                    Pasa el cursor por una etapa para leer su concepto.
                   </p>
                 </Card>
               )}
-
-              {/* Propuesta, cuando se trata de crear algo nuevo */}
-              {s.tipo === 'crear' && s.objetivo_codigo && (
-                <Card className="p-4">
-                  <h3 className="text-label text-fg">Actividad propuesta</h3>
-                  <p className="mt-2 flex items-center gap-2 text-body text-fg">
-                    <span className="font-mono text-fg-muted">{s.objetivo_codigo}</span>
-                    {s.objetivo_nomenclatura}
-                  </p>
-                </Card>
-              )}
-
-              <RuaTracker solicitud={s} etapas={data.etapas} compacto />
             </div>
           )}
         </div>
