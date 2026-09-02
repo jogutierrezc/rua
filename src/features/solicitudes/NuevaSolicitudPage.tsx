@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Info, Lightbulb, Send } from 'lucide-react'
+import { Info, Layers, Lightbulb, Plus, Send, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase, mensajeDeError } from '@/lib/supabase'
 import { dispararEnvioCorreos } from '@/lib/correo'
@@ -10,35 +10,53 @@ import { cn } from '@/lib/cn'
 import { AYUDA_CODIGO, normalizarCodigo, validarCodigo } from '@/lib/codigos'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
-import { Campo, Input, Select, Textarea } from '@/components/ui/Field'
-import { Card, CardHeader } from '@/components/ui/primitives'
+import { Campo, Checkbox, Input, Select, Textarea } from '@/components/ui/Field'
+import { Card, CardHeader, EmptyState } from '@/components/ui/primitives'
 import { useAuth } from '@/features/auth/AuthProvider'
 import type { ActividadArbolRow, Prioridad, TipoSolicitud } from '@/types/database'
 
 const MIN_JUSTIFICACION = 150
 const MAX_JUSTIFICACION = 2000
 
+/**
+ * Una actividad afectada por la solicitud.
+ *
+ * El expediente guarda CÓMO DEBE QUEDAR cada actividad, no una instrucción que
+ * alguien tenga que interpretar. Por eso al seleccionar una se copian su código
+ * y su nomenclatura actuales: el solicitante edita lo que quiere cambiar y deja
+ * el resto como está, y quien firma lee el resultado, no la orden.
+ */
+interface Linea {
+  /** Clave local de React. No viaja a la base. */
+  clave: string
+  principalId: string
+  /** Vacío en un alta: la actividad todavía no existe. */
+  actividadId: string
+  codigo: string
+  nomenclatura: string
+  /** Lo que hay hoy, para poder enseñarlo al lado de la propuesta. */
+  actualCodigo: string
+  actualNomenclatura: string
+}
+
 interface Formulario {
   tipo: TipoSolicitud
   prioridad: Prioridad
-  actividadPrincipalId: string
-  actividadId: string
-  propuestaCodigo: string
-  propuestaNomenclatura: string
-  propuestaApoyo: string
+  principales: string[]
+  lineas: Linea[]
   justificacion: string
 }
 
 const INICIAL: Formulario = {
   tipo: 'crear',
   prioridad: 'normal',
-  actividadPrincipalId: '',
-  actividadId: '',
-  propuestaCodigo: '',
-  propuestaNomenclatura: '',
-  propuestaApoyo: '',
+  principales: [],
+  lineas: [],
   justificacion: '',
 }
+
+let contador = 0
+const nuevaClave = () => `linea-${++contador}`
 
 export function NuevaSolicitudPage() {
   const { perfil } = useAuth()
@@ -46,7 +64,7 @@ export function NuevaSolicitudPage() {
   const qc = useQueryClient()
 
   const [f, setF] = useState<Formulario>(INICIAL)
-  const [tocado, setTocado] = useState<Set<keyof Formulario>>(new Set())
+  const [tocado, setTocado] = useState<Set<string>>(new Set())
 
   const { data: actividades } = useQuery({
     queryKey: ['actividades', 'arbol'],
@@ -63,28 +81,109 @@ export function NuevaSolicitudPage() {
   })
 
   const principales = actividades?.filter((a) => a.tipo === 'principal') ?? []
-  const hijasDeSeleccion = actividades?.filter(
-    (a) => a.tipo !== 'principal' && a.raiz_id === f.actividadPrincipalId,
-  ) ?? []
+  const hijasDe = (principalId: string) =>
+    actividades?.filter((a) => a.tipo !== 'principal' && a.raiz_id === principalId) ?? []
+
+  // ---------------------------------------------------------------------------
+  // Selección
+  // ---------------------------------------------------------------------------
+  function alternarPrincipal(id: string) {
+    setF((prev) => {
+      const dentro = prev.principales.includes(id)
+      return {
+        ...prev,
+        principales: dentro
+          ? prev.principales.filter((p) => p !== id)
+          : [...prev.principales, id],
+        // Al quitar un pilar se van con él sus actividades: dejarlas colgando
+        // produciría una solicitud que afecta a algo que ya no está declarado.
+        lineas: dentro ? prev.lineas.filter((l) => l.principalId !== id) : prev.lineas,
+      }
+    })
+  }
+
+  function alternarAfectada(principalId: string, a: ActividadArbolRow) {
+    setF((prev) => {
+      const existente = prev.lineas.find((l) => l.actividadId === a.id)
+      if (existente) {
+        return { ...prev, lineas: prev.lineas.filter((l) => l.clave !== existente.clave) }
+      }
+      return {
+        ...prev,
+        lineas: [
+          ...prev.lineas,
+          {
+            clave: nuevaClave(),
+            principalId,
+            actividadId: a.id,
+            // Precargado con lo que hay hoy: se edita lo que cambia.
+            codigo: a.codigo,
+            nomenclatura: a.nomenclatura,
+            actualCodigo: a.codigo,
+            actualNomenclatura: a.nomenclatura,
+          },
+        ],
+      }
+    })
+  }
+
+  function anadirAlta(principalId: string) {
+    setF((prev) => ({
+      ...prev,
+      lineas: [
+        ...prev.lineas,
+        {
+          clave: nuevaClave(),
+          principalId,
+          actividadId: '',
+          codigo: '',
+          nomenclatura: '',
+          actualCodigo: '',
+          actualNomenclatura: '',
+        },
+      ],
+    }))
+  }
+
+  const quitarLinea = (clave: string) =>
+    setF((prev) => ({ ...prev, lineas: prev.lineas.filter((l) => l.clave !== clave) }))
+
+  const editarLinea = (clave: string, campo: 'codigo' | 'nomenclatura', valor: string) =>
+    setF((prev) => ({
+      ...prev,
+      lineas: prev.lineas.map((l) => (l.clave === clave ? { ...l, [campo]: valor } : l)),
+    }))
+
+  function cambiarTipo(tipo: TipoSolicitud) {
+    // Las líneas de una modificación no significan lo mismo en un alta: se
+    // vacían en vez de arrastrar una selección que dejó de tener sentido.
+    setF((prev) => ({ ...prev, tipo, lineas: [] }))
+  }
 
   // ---------------------------------------------------------------------------
   // Validación. Se calcula siempre, pero sólo se MUESTRA en los campos que el
   // usuario ya tocó: señalar en rojo un formulario recién abierto es hostil.
   // ---------------------------------------------------------------------------
-  const errores: Partial<Record<keyof Formulario, string>> = {}
+  const errores: Record<string, string> = {}
 
-  if (!f.actividadPrincipalId) {
-    errores.actividadPrincipalId = 'Elige la actividad principal a la que pertenece.'
+  if (f.principales.length === 0) {
+    errores.principales = 'Elige al menos una actividad principal.'
   }
-  if (f.tipo === 'crear' && !f.propuestaNomenclatura.trim()) {
-    errores.propuestaNomenclatura = 'Describe la actividad que quieres crear.'
+  if (f.lineas.length === 0) {
+    errores.lineas =
+      f.tipo === 'crear'
+        ? 'Añade al menos una actividad que quieras crear.'
+        : 'Selecciona al menos una actividad afectada.'
   }
-  if (f.tipo !== 'crear' && !f.actividadId) {
-    errores.actividadId = 'Selecciona la actividad afectada.'
+
+  for (const l of f.lineas) {
+    if (f.tipo === 'crear' && !l.nomenclatura.trim()) {
+      errores[`nomenclatura-${l.clave}`] = 'Describe la actividad que quieres crear.'
+    }
+    // El código sugerido es opcional: lo confirma la administración al aplicar.
+    const err = validarCodigo(l.codigo, false)
+    if (err) errores[`codigo-${l.clave}`] = err
   }
-  // El código sugerido es opcional aquí: lo confirma coordinación al aprobar.
-  const errorCodigoPropuesto = validarCodigo(f.propuestaCodigo, false)
-  if (errorCodigoPropuesto) errores.propuestaCodigo = errorCodigoPropuesto
 
   const largoJustificacion = f.justificacion.trim().length
   if (largoJustificacion < MIN_JUSTIFICACION) {
@@ -93,54 +192,44 @@ export function NuevaSolicitudPage() {
 
   const valido = Object.keys(errores).length === 0
 
-  function ver(campo: keyof Formulario) {
-    return tocado.has(campo) ? errores[campo] ?? null : null
-  }
-  function marcar(campo: keyof Formulario) {
-    setTocado((t) => new Set(t).add(campo))
-  }
-  function set<K extends keyof Formulario>(campo: K, valor: Formulario[K]) {
-    setF((prev) => ({ ...prev, [campo]: valor }))
-  }
+  const ver = (campo: string) => (tocado.has(campo) ? errores[campo] ?? null : null)
+  const marcar = (campo: string) => setTocado((t) => new Set(t).add(campo))
 
   // ---------------------------------------------------------------------------
   const enviar = useMutation({
     mutationFn: async (comoBorrador: boolean) => {
       if (!perfil) throw new Error('Sesión no disponible')
 
-      const { data: periodo } = await supabase
-        .from('periodos')
-        .select('id')
-        .eq('estado', 'abierto')
-        .maybeSingle()
-
-      const { data, error } = await supabase
-        .from('solicitudes')
-        .insert({
-          tipo: f.tipo,
-          estado: comoBorrador ? 'borrador' : 'pendiente',
-          prioridad: f.prioridad,
-          solicitante_id: perfil.id,
-          periodo_id: periodo?.id ?? null,
-          actividad_id: f.tipo === 'crear' ? null : f.actividadId || null,
-          actividad_principal_id: f.actividadPrincipalId || null,
-          propuesta_codigo: f.propuestaCodigo.trim() || null,
-          propuesta_nomenclatura: f.propuestaNomenclatura.trim() || null,
-          propuesta_tipo: f.tipo === 'crear' ? 'directa' : null,
-          propuesta_apoyo: f.propuestaApoyo.trim() || null,
-          concepto_justificativo: f.justificacion.trim(),
-        })
-        .select('folio')
-        .single()
+      // La cabecera y sus líneas entran en la misma transacción: la función se
+      // encarga, y por eso ya no se inserta contra la tabla desde aquí.
+      const { data, error } = await supabase.rpc('fn_guardar_solicitud', {
+        p_solicitud_id: null,
+        p_tipo: f.tipo,
+        p_prioridad: f.prioridad,
+        p_concepto: f.justificacion.trim(),
+        p_lineas: f.lineas.map((l) => ({
+          actividad_principal_id: l.principalId,
+          actividad_id: l.actividadId || null,
+          codigo: l.codigo.trim() || null,
+          nomenclatura: l.nomenclatura.trim() || null,
+        })),
+        p_enviar: !comoBorrador,
+      })
 
       if (error) throw error
-      return data
+      return data?.[0]
     },
     onSuccess: (data, comoBorrador) => {
       toast.success(
         comoBorrador
-          ? `Borrador guardado como ${data.folio}`
-          : `Solicitud ${data.folio} enviada a revisión`,
+          ? `Borrador guardado como ${data?.folio}`
+          : `Solicitud ${data?.folio} enviada a revisión`,
+        {
+          description:
+            f.lineas.length > 1
+              ? `${f.lineas.length} actividades en un solo expediente.`
+              : undefined,
+        },
       )
       void qc.invalidateQueries({ queryKey: ['solicitudes'] })
       navigate('/solicitudes')
@@ -154,15 +243,22 @@ export function NuevaSolicitudPage() {
     e.preventDefault()
     // Al intentar enviar, se muestran todos los errores de golpe: en ese
     // momento sí es lo que el usuario espera.
-    setTocado(new Set(Object.keys(f) as (keyof Formulario)[]))
+    setTocado(new Set(Object.keys(errores)))
     if (valido) enviar.mutate(false)
   }
+
+  const etiquetaAcciones =
+    f.tipo === 'crear'
+      ? 'Actividades a crear'
+      : f.tipo === 'eliminar'
+        ? 'Actividades a dar de baja'
+        : 'Actividades afectadas'
 
   return (
     <>
       <PageHeader
         titulo="Nueva solicitud"
-        descripcion="Propón la creación o modificación de una actividad. La revisará el comité académico."
+        descripcion="Propón cambios sobre una o varias actividades. Se revisan juntas, en un solo expediente."
         volver={{ a: '/solicitudes', etiqueta: 'Volver a solicitudes' }}
       />
 
@@ -184,11 +280,11 @@ export function NuevaSolicitudPage() {
                   <Select
                     id={id}
                     value={f.tipo}
-                    onChange={(e) => set('tipo', e.target.value as TipoSolicitud)}
+                    onChange={(e) => cambiarTipo(e.target.value as TipoSolicitud)}
                   >
-                    <option value="crear">Crear una actividad nueva</option>
-                    <option value="editar">Modificar una actividad existente</option>
-                    <option value="eliminar">Dar de baja una actividad</option>
+                    <option value="crear">Crear actividades nuevas</option>
+                    <option value="editar">Modificar actividades existentes</option>
+                    <option value="eliminar">Dar de baja actividades</option>
                   </Select>
                 )}
               </Campo>
@@ -198,7 +294,9 @@ export function NuevaSolicitudPage() {
                   <Select
                     id={id}
                     value={f.prioridad}
-                    onChange={(e) => set('prioridad', e.target.value as Prioridad)}
+                    onChange={(e) =>
+                      setF((prev) => ({ ...prev, prioridad: e.target.value as Prioridad }))
+                    }
                   >
                     <option value="normal">Normal</option>
                     <option value="alta">Alta</option>
@@ -206,130 +304,202 @@ export function NuevaSolicitudPage() {
                   </Select>
                 )}
               </Campo>
+            </div>
+          </Card>
 
-              <Campo
-                etiqueta="Actividad principal"
-                requerido
-                error={ver('actividadPrincipalId')}
-                className="sm:col-span-2"
-                pista="El pilar estratégico al que pertenece la petición."
-              >
-                {({ id, describedBy, invalido }) => (
-                  <Select
-                    id={id}
-                    aria-describedby={describedBy}
-                    aria-invalid={invalido}
-                    value={f.actividadPrincipalId}
-                    onBlur={() => marcar('actividadPrincipalId')}
-                    onChange={(e) => {
-                      set('actividadPrincipalId', e.target.value)
-                      set('actividadId', '') // la selección hija deja de ser válida
+          {/* Actividades principales ----------------------------------- */}
+          <Card>
+            <CardHeader
+              titulo="Actividades principales"
+              descripcion="Los pilares a los que pertenece la petición. Puedes marcar varios."
+              icono={<Layers className="size-4" />}
+            />
+            <div className="p-4">
+              {ver('principales') && (
+                <p className="mb-2 text-body-sm text-danger">{errores.principales}</p>
+              )}
+              <div className="grid gap-1 sm:grid-cols-2">
+                {principales.map((a) => (
+                  <Checkbox
+                    key={a.id}
+                    etiqueta={
+                      <span>
+                        <span className="font-mono text-fg-muted">{a.codigo}</span>{' '}
+                        {a.nomenclatura}
+                      </span>
+                    }
+                    checked={f.principales.includes(a.id)}
+                    onChange={() => {
+                      marcar('principales')
+                      alternarPrincipal(a.id)
                     }}
-                  >
-                    <option value="">Selecciona la actividad principal…</option>
-                    {principales.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.codigo} · {a.nomenclatura}
-                      </option>
-                    ))}
-                  </Select>
-                )}
-              </Campo>
+                  />
+                ))}
+              </div>
+            </div>
+          </Card>
 
-              {f.tipo !== 'crear' && (
-                <Campo
-                  etiqueta="Actividad afectada"
-                  requerido
-                  error={ver('actividadId')}
-                  className="sm:col-span-2"
-                >
-                  {({ id, describedBy, invalido }) => (
-                    <Select
-                      id={id}
-                      aria-describedby={describedBy}
-                      aria-invalid={invalido}
-                      disabled={!f.actividadPrincipalId}
-                      value={f.actividadId}
-                      onBlur={() => marcar('actividadId')}
-                      onChange={(e) => set('actividadId', e.target.value)}
-                    >
-                      <option value="">
-                        {f.actividadPrincipalId
-                          ? 'Selecciona la actividad…'
-                          : 'Elige primero la actividad principal'}
-                      </option>
-                      {hijasDeSeleccion.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.codigo} · {a.nomenclatura}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                </Campo>
+          {/* Actividades afectadas ------------------------------------- */}
+          <Card>
+            <CardHeader
+              titulo={etiquetaAcciones}
+              descripcion={
+                f.tipo === 'crear'
+                  ? 'Añade una fila por cada actividad nueva. Todas colgarán del pilar indicado.'
+                  : 'Sólo se ofrecen las actividades que cuelgan de los pilares que marcaste arriba.'
+              }
+            />
+
+            <div className="flex flex-col gap-4 p-4">
+              {ver('lineas') && <p className="text-body-sm text-danger">{errores.lineas}</p>}
+
+              {f.principales.length === 0 ? (
+                <EmptyState
+                  titulo="Elige primero la actividad principal"
+                  descripcion="Las actividades afectadas siempre cuelgan de un pilar, así que ése es el primer paso."
+                />
+              ) : (
+                f.principales.map((pid) => {
+                  const principal = principales.find((a) => a.id === pid)
+                  const hijas = hijasDe(pid)
+                  return (
+                    <section key={pid}>
+                      <h3 className="text-label text-fg">
+                        <span className="font-mono text-fg-muted">{principal?.codigo}</span>{' '}
+                        {principal?.nomenclatura}
+                      </h3>
+
+                      {f.tipo === 'crear' ? (
+                        <div className="mt-2">
+                          <Button
+                            tamano="sm"
+                            onClick={() => anadirAlta(pid)}
+                            iconoIzq={<Plus className="size-4" />}
+                          >
+                            Añadir actividad bajo este pilar
+                          </Button>
+                          <p className="mt-1.5 text-body-sm text-fg-subtle">
+                            {f.lineas.filter((l) => l.principalId === pid).length} añadida(s). Se
+                            describen abajo, en «Cambios propuestos».
+                          </p>
+                        </div>
+                      ) : hijas.length === 0 ? (
+                        <p className="mt-2 text-body-sm text-fg-subtle">
+                          Este pilar todavía no tiene actividades por debajo.
+                        </p>
+                      ) : (
+                        <div className="mt-2 grid gap-1 sm:grid-cols-2">
+                          {hijas.map((a) => (
+                            <Checkbox
+                              key={a.id}
+                              etiqueta={
+                                <span>
+                                  <span className="font-mono text-fg-muted">{a.codigo}</span>{' '}
+                                  {a.nomenclatura}
+                                </span>
+                              }
+                              checked={f.lineas.some((l) => l.actividadId === a.id)}
+                              onChange={() => {
+                                marcar('lineas')
+                                alternarAfectada(pid, a)
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  )
+                })
               )}
             </div>
           </Card>
 
-          {/* Propuesta ------------------------------------------------- */}
-          {f.tipo !== 'eliminar' && (
+          {/* Cambios propuestos ---------------------------------------- */}
+          {f.tipo !== 'eliminar' && f.lineas.length > 0 && (
             <Card>
               <CardHeader
-                titulo={f.tipo === 'crear' ? 'Actividad propuesta' : 'Cambios propuestos'}
-                descripcion="Cómo debería quedar la estructura si se aprueba."
+                titulo="Cambios propuestos"
+                descripcion="Cómo debería quedar cada actividad si se aprueba. Lo precargado es lo que hay hoy."
               />
-              <div className="grid gap-4 p-4 sm:grid-cols-3">
-                <Campo
-                  etiqueta="Código sugerido"
-                  error={ver('propuestaCodigo')}
-                  pista={`Opcional. ${AYUDA_CODIGO}`}
-                >
-                  {({ id, describedBy, invalido }) => (
-                    <Input
-                      id={id}
-                      aria-describedby={describedBy}
-                      aria-invalid={invalido}
-                      placeholder="SUB-014"
-                      value={f.propuestaCodigo}
-                      onBlur={() => marcar('propuestaCodigo')}
-                      onChange={(e) => set('propuestaCodigo', normalizarCodigo(e.target.value))}
-                    />
-                  )}
-                </Campo>
+              <div className="flex flex-col divide-y divide-line">
+                {f.lineas.map((l, i) => {
+                  const principal = principales.find((a) => a.id === l.principalId)
+                  const cambiado =
+                    l.codigo.trim() !== l.actualCodigo ||
+                    l.nomenclatura.trim() !== l.actualNomenclatura
+                  return (
+                    <div key={l.clave} className="p-4">
+                      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                        <h3 className="text-label text-fg">
+                          {i + 1}.{' '}
+                          {l.actividadId ? (
+                            <>
+                              <span className="font-mono text-fg-muted">{l.actualCodigo}</span>{' '}
+                              {l.actualNomenclatura}
+                            </>
+                          ) : (
+                            <span className="text-fg-muted">
+                              Actividad nueva bajo {principal?.codigo}
+                            </span>
+                          )}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          {l.actividadId && !cambiado && (
+                            <span className="text-body-sm text-warning">Sin cambios todavía</span>
+                          )}
+                          <Button
+                            tamano="sm"
+                            onClick={() => quitarLinea(l.clave)}
+                            iconoIzq={<Trash2 className="size-4" />}
+                          >
+                            Quitar
+                          </Button>
+                        </div>
+                      </div>
 
-                <Campo
-                  etiqueta="Nomenclatura oficial"
-                  requerido={f.tipo === 'crear'}
-                  error={ver('propuestaNomenclatura')}
-                  className="sm:col-span-2"
-                >
-                  {({ id, describedBy, invalido }) => (
-                    <Input
-                      id={id}
-                      aria-describedby={describedBy}
-                      aria-invalid={invalido}
-                      placeholder="Ej. Revisión de Sílabos de Ciencias Generales"
-                      value={f.propuestaNomenclatura}
-                      onBlur={() => marcar('propuestaNomenclatura')}
-                      onChange={(e) => set('propuestaNomenclatura', e.target.value)}
-                    />
-                  )}
-                </Campo>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <Campo
+                          etiqueta="Código"
+                          error={ver(`codigo-${l.clave}`)}
+                          pista={`Opcional. ${AYUDA_CODIGO}`}
+                        >
+                          {({ id, describedBy, invalido }) => (
+                            <Input
+                              id={id}
+                              aria-describedby={describedBy}
+                              aria-invalid={invalido}
+                              placeholder="SUB-014"
+                              value={l.codigo}
+                              onBlur={() => marcar(`codigo-${l.clave}`)}
+                              onChange={(e) =>
+                                editarLinea(l.clave, 'codigo', normalizarCodigo(e.target.value))
+                              }
+                            />
+                          )}
+                        </Campo>
 
-                <Campo
-                  etiqueta="Actividad de apoyo asociada"
-                  className="sm:col-span-3"
-                  pista="Si esta actividad requiere una tarea de soporte, descríbela aquí."
-                >
-                  {({ id, describedBy }) => (
-                    <Input
-                      id={id}
-                      aria-describedby={describedBy}
-                      placeholder="Ej. Preparación de material didáctico"
-                      value={f.propuestaApoyo}
-                      onChange={(e) => set('propuestaApoyo', e.target.value)}
-                    />
-                  )}
-                </Campo>
+                        <Campo
+                          etiqueta="Nomenclatura oficial"
+                          requerido={f.tipo === 'crear'}
+                          error={ver(`nomenclatura-${l.clave}`)}
+                          className="sm:col-span-2"
+                        >
+                          {({ id, describedBy, invalido }) => (
+                            <Input
+                              id={id}
+                              aria-describedby={describedBy}
+                              aria-invalid={invalido}
+                              placeholder="Ej. Revisión de Sílabos de Ciencias Generales"
+                              value={l.nomenclatura}
+                              onBlur={() => marcar(`nomenclatura-${l.clave}`)}
+                              onChange={(e) => editarLinea(l.clave, 'nomenclatura', e.target.value)}
+                            />
+                          )}
+                        </Campo>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </Card>
           )}
@@ -352,7 +522,9 @@ export function NuevaSolicitudPage() {
                     placeholder="Explica el impacto esperado, los recursos necesarios y cómo se alinea con los objetivos institucionales. Si requiere presupuesto adicional, indícalo explícitamente."
                     value={f.justificacion}
                     onBlur={() => marcar('justificacion')}
-                    onChange={(e) => set('justificacion', e.target.value)}
+                    onChange={(e) =>
+                      setF((prev) => ({ ...prev, justificacion: e.target.value }))
+                    }
                   />
                 )}
               </Campo>
@@ -375,6 +547,11 @@ export function NuevaSolicitudPage() {
                   {largoJustificacion} / {MAX_JUSTIFICACION}
                 </p>
               </div>
+
+              <p className="mt-2 text-body-sm text-fg-subtle">
+                Una sola justificación para todo el expediente: las{' '}
+                {f.lineas.length || 'varias'} actividades se deciden juntas.
+              </p>
             </div>
           </Card>
 
@@ -382,7 +559,8 @@ export function NuevaSolicitudPage() {
             <Button onClick={() => navigate('/solicitudes')}>Cancelar</Button>
             <Button
               onClick={() => enviar.mutate(true)}
-              disabled={enviar.isPending || !f.justificacion.trim()}
+              disabled={enviar.isPending || f.lineas.length === 0}
+              title={f.lineas.length === 0 ? 'Añade al menos una actividad' : undefined}
             >
               Guardar borrador
             </Button>
@@ -405,6 +583,10 @@ export function NuevaSolicitudPage() {
               Guía de llenado
             </h2>
             <ul className="mt-3 flex list-disc flex-col gap-2 pl-4 text-body-sm text-fg-muted">
+              <li>
+                Agrupa en un mismo expediente las actividades que se deciden juntas; separa las que
+                no.
+              </li>
               <li>Evita descripciones genéricas: el comité deniega lo que no puede evaluar.</li>
               <li>Menciona la normativa institucional aplicable, si la hay.</li>
               <li>

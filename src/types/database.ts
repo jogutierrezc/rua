@@ -262,6 +262,45 @@ export type ResultadoDecision = {
   actividad_id: string | null
 }
 
+/**
+ * Una actividad afectada por la solicitud.
+ *
+ * Fuente de verdad de lo que pide el expediente. Los campos `propuesta_*` de
+ * `SolicitudRow` son el reflejo de la primera de estas líneas, y existen sólo
+ * porque de ellos cuelgan vistas y correos anteriores a este modelo.
+ */
+export type SolicitudActividadRow = {
+  id: string
+  solicitud_id: string
+  /** Nulo en un alta: la actividad todavía no existe. */
+  actividad_id: string | null
+  actividad_principal_id: string | null
+  propuesta_codigo: string | null
+  propuesta_nomenclatura: string | null
+  propuesta_tipo: TipoActividad | null
+  orden: number
+  /** Qué se creó o se tocó al aplicar esta línea. */
+  actividad_resultante_id: string | null
+  aplicada_en: string | null
+  creado_en: string
+}
+
+/** La línea con el estado actual de la actividad al lado de lo propuesto. */
+export type SolicitudActividadDetalleRow = Omit<SolicitudActividadRow, 'creado_en'> & {
+  actual_codigo: string | null
+  actual_nomenclatura: string | null
+  actual_tipo: TipoActividad | null
+  actual_estado: EstadoActividad | null
+  principal_codigo: string | null
+  principal_nomenclatura: string | null
+}
+
+/** Lo que devuelve `fn_guardar_solicitud`. */
+export type ResultadoGuardado = {
+  id: string
+  folio: string
+}
+
 /** Lo que devuelve `fn_resolver_solicitud_admin`. */
 export type ResultadoResolucionAdmin = {
   /** Cuántas etapas quedaron firmadas de una vez. */
@@ -457,6 +496,7 @@ export interface Database {
       solicitud_revisiones: Tabla<SolicitudRevisionRow>
       etapas_flujo: Tabla<EtapaFlujoRow>
       solicitud_etapas: Tabla<SolicitudEtapaRow>
+      solicitud_actividades: Tabla<SolicitudActividadRow>
       notificaciones: Tabla<NotificacionRow>
       auditoria: Tabla<AuditoriaRow>
       configuracion: Tabla<ConfiguracionRow>
@@ -468,6 +508,7 @@ export interface Database {
       v_solicitudes_detalle: { Row: SolicitudDetalleRow; Relationships: [] }
       v_periodos_detalle: { Row: PeriodoDetalleRow; Relationships: [] }
       v_solicitud_etapas: { Row: SolicitudEtapaRow; Relationships: [] }
+      v_solicitud_actividades: { Row: SolicitudActividadDetalleRow; Relationships: [] }
       v_etapas_configuracion: { Row: EtapaConfiguracionRow; Relationships: [] }
     }
     Functions: {
@@ -491,6 +532,26 @@ export interface Database {
       fn_decidir_etapa: {
         Args: { p_solicitud_id: string; p_aprobar: boolean; p_justificacion: string }
         Returns: ResultadoDecision[]
+      }
+      fn_guardar_solicitud: {
+        Args: {
+          /** Nulo para un expediente nuevo. */
+          p_solicitud_id: string | null
+          p_tipo: TipoSolicitud
+          p_prioridad: Prioridad
+          p_concepto: string
+          /** Una entrada por actividad afectada. */
+          p_lineas: {
+            actividad_principal_id: string | null
+            actividad_id: string | null
+            codigo: string | null
+            nomenclatura: string | null
+            tipo?: TipoActividad | null
+          }[]
+          /** Falso: se queda en borrador. */
+          p_enviar: boolean
+        }
+        Returns: ResultadoGuardado[]
       }
       fn_resolver_solicitud_admin: {
         Args: {

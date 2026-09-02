@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Folder,
   Gavel,
+  Layers,
   Info,
   Loader2,
   ShieldAlert,
@@ -232,6 +233,81 @@ export function DialogoSolicitud({
                   {s.concepto_justificativo}
                 </p>
               </Card>
+
+              {/* Qué actividades toca, y cómo quedan.
+
+                  Es la tarjeta que decide si el revisor puede firmar con
+                  criterio: sin el valor actual al lado del propuesto, «SUB-014
+                  · Revisión de sílabos» no dice si eso es lo que hay o lo que
+                  se pide. */}
+              {data.lineas.length > 0 && (
+                <Card className="p-4">
+                  <h3 className="flex items-center gap-2 text-label text-fg">
+                    <Layers aria-hidden className="size-4 text-fg-subtle" />
+                    {data.lineas.length === 1
+                      ? 'Actividad afectada'
+                      : `${data.lineas.length} actividades afectadas`}
+                  </h3>
+
+                  <ul className="mt-3 flex flex-col divide-y divide-line">
+                    {data.lineas.map((l, i) => {
+                      const propuestoCodigo = l.propuesta_codigo ?? l.actual_codigo
+                      const propuestaNomenclatura =
+                        l.propuesta_nomenclatura ?? l.actual_nomenclatura
+                      const cambiaCodigo =
+                        Boolean(l.actual_codigo) && propuestoCodigo !== l.actual_codigo
+                      const cambiaNombre =
+                        Boolean(l.actual_nomenclatura) &&
+                        propuestaNomenclatura !== l.actual_nomenclatura
+
+                      return (
+                        <li key={l.id} className="py-2.5 first:pt-0 last:pb-0">
+                          <p className="text-body-sm text-fg-subtle">
+                            {i + 1}.{' '}
+                            {l.principal_codigo ? (
+                              <>
+                                <span className="font-mono">{l.principal_codigo}</span>{' '}
+                                {l.principal_nomenclatura}
+                              </>
+                            ) : (
+                              'Sin pilar declarado'
+                            )}
+                          </p>
+
+                          {l.actual_codigo && (
+                            <p
+                              className={cn(
+                                'mt-1 text-body-sm',
+                                cambiaCodigo || cambiaNombre
+                                  ? 'text-fg-subtle line-through'
+                                  : 'text-fg-muted',
+                              )}
+                            >
+                              <span className="font-mono">{l.actual_codigo}</span>{' '}
+                              {l.actual_nomenclatura}
+                            </p>
+                          )}
+
+                          {s.tipo !== 'eliminar' && (
+                            <p className="mt-0.5 text-body text-fg">
+                              <span className="font-mono text-fg-muted">
+                                {propuestoCodigo ?? '—'}
+                              </span>{' '}
+                              {propuestaNomenclatura ?? 'Sin nomenclatura propuesta'}
+                            </p>
+                          )}
+
+                          {l.aplicada_en && (
+                            <p className="mt-0.5 text-body-sm text-success">
+                              Aplicada {fechaRelativa(l.aplicada_en)}
+                            </p>
+                          )}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </Card>
+              )}
 
               {/* Actividad y subactividades afectadas */}
               {data.contexto.length > 0 && (

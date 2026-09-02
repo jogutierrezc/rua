@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type {
   ActividadArbolRow,
+  SolicitudActividadDetalleRow,
   SolicitudDetalleRow,
   SolicitudEtapaRow,
 } from '@/types/database'
@@ -19,10 +20,18 @@ export function useExpediente(solicitudId: string | null) {
     queryKey: ['expediente', solicitudId],
     enabled: Boolean(solicitudId),
     queryFn: async () => {
-      const [solicitud, etapas] = await Promise.all([
+      const [solicitud, etapas, lineas] = await Promise.all([
         supabase.from('v_solicitudes_detalle').select('*').eq('id', solicitudId!).single(),
         supabase
           .from('v_solicitud_etapas')
+          .select('*')
+          .eq('solicitud_id', solicitudId!)
+          .order('orden'),
+        // Un expediente puede afectar a varias actividades. Se traen todas: el
+        // revisor firma el conjunto, y enseñarle sólo la primera le haría
+        // firmar a ciegas las demás.
+        supabase
+          .from('v_solicitud_actividades')
           .select('*')
           .eq('solicitud_id', solicitudId!)
           .order('orden'),
@@ -30,6 +39,7 @@ export function useExpediente(solicitudId: string | null) {
 
       if (solicitud.error) throw solicitud.error
       if (etapas.error) throw etapas.error
+      if (lineas.error) throw lineas.error
 
       const s = solicitud.data as SolicitudDetalleRow
 
@@ -49,6 +59,7 @@ export function useExpediente(solicitudId: string | null) {
       return {
         solicitud: s,
         etapas: (etapas.data ?? []) as SolicitudEtapaRow[],
+        lineas: (lineas.data ?? []) as SolicitudActividadDetalleRow[],
         contexto,
       }
     },
