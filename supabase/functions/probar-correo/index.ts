@@ -81,19 +81,42 @@ function cuerpoAHtml(texto: string): string {
     .map((p) => {
       const lineas = p.split('\n').filter((l) => l.trim())
 
-      // Bloque de "Etiqueta: valor" → tabla de datos
+      // Una variable que se resolvió vacía deja el párrafo vacío. Se descarta en
+      // vez de imprimir un hueco: el correo no tiene por qué delatar qué se
+      // quedó sin configurar.
+      if (lineas.length === 0) return ''
+
+      // Una línea que es SÓLO una dirección web se convierte en botón. No hay
+      // sintaxis que aprender: en el texto plano se lee como un enlace, y en el
+      // correo se ve como lo que es.
+      if (lineas.length === 1 && /^https?:\/\/\S+$/.test(lineas[0].trim())) {
+        const destino = escapar(lineas[0].trim())
+        return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px 0 24px">
+          <tr><td style="border-radius:8px;background:#0f2f56">
+            <a href="${destino}" style="display:inline-block;padding:12px 24px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none">Entrar al portal</a>
+          </td></tr>
+        </table>`
+      }
+
+      // Bloque de "Etiqueta: valor" → ficha de datos
       const esDatos = lineas.length > 1 && lineas.every((l) => /^[^:]{2,40}:\s/.test(l))
       if (esDatos) {
         const filas = lineas
           .map((l) => {
             const i = l.indexOf(':')
             return `<tr>
-              <td style="padding:4px 16px 4px 0;color:#5b6472;font-size:13px;white-space:nowrap;vertical-align:top">${escapar(l.slice(0, i))}</td>
-              <td style="padding:4px 0;color:#111c2c;font-size:14px">${escapar(l.slice(i + 1).trim())}</td>
+              <td style="padding:5px 16px 5px 0;color:#5b6472;font-size:13px;white-space:nowrap;vertical-align:top">${escapar(l.slice(0, i))}</td>
+              <td style="padding:5px 0;color:#111c2c;font-size:14px;font-weight:500">${escapar(l.slice(i + 1).trim())}</td>
             </tr>`
           })
           .join('')
-        return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse">${filas}</table>`
+        // Enmarcada: en una bienvenida este bloque son las credenciales, y
+        // tienen que encontrarse de un vistazo entre el resto del texto.
+        return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;background:#f7f8fb;border:1px solid #e4e7ec;border-radius:10px;border-collapse:separate">
+          <tr><td style="padding:14px 16px">
+            <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse">${filas}</table>
+          </td></tr>
+        </table>`
       }
 
       // Un párrafo de una sola línea corta y sin punto final funciona como

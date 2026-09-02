@@ -229,5 +229,32 @@ Deno.serve(async (req) => {
     datos_despues: { nombre_completo: nombre, correo, numero_documento: documento },
   })
 
-  return responder({ id: creado.user.id, nombre_completo: nombre, correo }, 201)
+  // ---------------------------------------------------------------------------
+  // 5 · La bienvenida
+  //
+  // No es fatal si falla, y es deliberado: la cuenta YA existe. Devolver un
+  // error aquí haría creer al administrador que no se creó nada y le llevaría a
+  // intentarlo otra vez, que es cuando aparecen los usuarios duplicados. Si el
+  // correo no sale, la contraseña se entrega a mano, como hasta ahora.
+  //
+  // La función devuelve nulo sin encolar si el envío está desactivado.
+  // ---------------------------------------------------------------------------
+  const { data: encolado, error: errInvitacion } = await admin.rpc('fn_encolar_invitacion', {
+    p_perfil_id: creado.user.id,
+    p_contrasena: cuerpo.contrasena!,
+  })
+
+  if (errInvitacion) console.error('No se pudo encolar la invitación:', errInvitacion)
+
+  return responder(
+    {
+      id: creado.user.id,
+      nombre_completo: nombre,
+      correo,
+      // Lo sabe la pantalla para decidir si sigue pidiendo entregar la
+      // contraseña a mano o ya no hace falta.
+      invitacion_enviada: Boolean(encolado) && !errInvitacion,
+    },
+    201,
+  )
 })

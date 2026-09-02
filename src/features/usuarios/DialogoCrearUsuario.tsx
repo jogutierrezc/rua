@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { dispararEnvioCorreos } from '@/lib/correo'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
 import { Campo, Input, Select } from '@/components/ui/Field'
@@ -151,14 +152,24 @@ export function DialogoCrearUsuario({ onCerrar }: { onCerrar: () => void }) {
         throw { mensaje: 'No se pudo crear el usuario. Inténtalo de nuevo.' }
       }
 
-      return data as { id: string; nombre_completo: string; correo: string }
+      return data as {
+        id: string
+        nombre_completo: string
+        correo: string
+        invitacion_enviada?: boolean
+      }
     },
     onSuccess: (u) => {
       toast.success(`${u.nombre_completo} ya puede entrar`, {
-        description: `Cuenta creada para ${u.correo}. Entrégale la contraseña por un canal seguro.`,
+        description: u.invitacion_enviada
+          ? `Se le envió la invitación a ${u.correo} con sus datos de acceso.`
+          : `Cuenta creada para ${u.correo}. Entrégale la contraseña por un canal seguro.`,
       })
       void qc.invalidateQueries({ queryKey: ['usuarios'] })
       onCerrar()
+      // El trigger ya encoló la bienvenida; esto la empuja ahora en vez de
+      // esperar al cron. Es la primera impresión de alguien con el sistema.
+      dispararEnvioCorreos()
     },
     onError: (e) => {
       const err = e as { mensaje?: string; campo?: string }

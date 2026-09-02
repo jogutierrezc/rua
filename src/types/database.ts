@@ -427,6 +427,13 @@ export type ConfigCorreo = {
   nombre_remitente?: string
   responder_a?: string | null
   copia_oculta?: string | null
+  /**
+   * Dirección pública del portal, a la que apuntan los botones de los correos.
+   *
+   * Vive con los ajustes de correo porque sólo la usan los correos. Vacía, el
+   * botón simplemente no se pinta.
+   */
+  url_portal?: string | null
 }
 
 export type PlantillaCorreoRow = {

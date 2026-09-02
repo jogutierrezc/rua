@@ -264,6 +264,27 @@ function Configuracion() {
                 />
               )}
             </Campo>
+
+            {/* Vive aquí y no en Apariencia porque sólo la usan los correos:
+                es la dirección a la que llevan sus botones. Vacía, el botón
+                simplemente no se pinta. */}
+            <Campo
+              etiqueta="Dirección del portal"
+              className="sm:col-span-2"
+              pista="Adónde lleva el botón de los correos. Sin ella, la invitación llega sin enlace."
+            >
+              {({ id, describedBy }) => (
+                <Input
+                  id={id}
+                  type="url"
+                  inputMode="url"
+                  aria-describedby={describedBy}
+                  placeholder="https://rua.udesplanea.com"
+                  value={config.url_portal ?? ''}
+                  onChange={(e) => setConfig({ ...config, url_portal: e.target.value || null })}
+                />
+              )}
+            </Campo>
           </div>
 
           <div className="border-t border-line px-4">
