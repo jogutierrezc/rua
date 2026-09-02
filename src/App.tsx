@@ -16,6 +16,7 @@ import { AuditoriaPage } from '@/features/auditoria/AuditoriaPage'
 import { AparienciaPage } from '@/features/apariencia/AparienciaPage'
 import { PeriodosPage } from '@/features/periodos/PeriodosPage'
 import { FlujoPage } from '@/features/flujo/FlujoPage'
+import { CorreoPage } from '@/features/correo/CorreoPage'
 import { EmptyState } from '@/components/ui/primitives'
 import { LinkButton } from '@/components/ui/LinkButton'
 
@@ -125,6 +126,15 @@ export function App() {
             element={
               <RequierePermiso permiso="roles.administrar">
                 <FlujoPage />
+              </RequierePermiso>
+            }
+          />
+
+          <Route
+            path="correo"
+            element={
+              <RequierePermiso permiso="roles.administrar">
+                <CorreoPage />
               </RequierePermiso>
             }
           />

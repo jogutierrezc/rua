@@ -49,6 +49,7 @@ Las migraciones viven en `supabase/migrations/` y se aplican **en orden**:
 | `…001200_codigo_actividad_dos_digitos.sql` | Código de actividad desde 2 caracteres            |
 | `…001300_flujo_validacion.sql`       | Cadena de validaciones, firmas y justificación          |
 | `…001400_flujo_configurable.sql`     | Flujo editable, y la firma que crea la actividad         |
+| `…001500_correo.sql`                 | Plantillas, bandeja de salida y disparadores de aviso    |
 
 `supabase/seed.sql` es aparte: **datos de demostración**, sólo para desarrollo.
 
@@ -531,6 +532,92 @@ guardia que evita que alguien se ascienda a sí mismo. Es la identidad con la qu
 una persona figura en actas y nóminas.
 ---
 
+## Notificaciones por correo
+
+`/correo`, bajo `roles.administrar`. Tres pestañas: configuración del
+remitente, editor de plantillas y bitácora de envíos.
+
+### Se encolan, no se envían
+
+Los triggers de la base **no** llaman a Resend. Escriben una fila en
+`correos` y ya. Un trigger que enviara metería una llamada HTTP dentro de la
+transacción: si Resend tarda, la solicitud tarda; si Resend falla, ¿se revierte
+la aprobación? Ninguna respuesta a esa pregunta es buena.
+
+Con bandeja de salida: la transacción escribe una fila, la Edge Function la
+vacía después, un fallo deja el motivo en la fila y se reintenta hasta 3 veces.
+Y queda **bitácora de qué se envió exactamente a quién**, que en un sistema
+institucional pesa tanto como el envío.
+
+El cuerpo se guarda **ya renderizado**: la bitácora debe mostrar lo que salió,
+no lo que la plantilla diría hoy.
+
+### Los tres avisos
+
+| Plantilla | Cuándo | A quién |
+| --------- | ------ | ------- |
+| `solicitud_recibida` | Al presentar la solicitud | Acuse al solicitante + aviso a la oficina que abre la cadena |
+| `novedad_registrada` | Al desbloquearse una etapa | La oficina que ahora debe firmar |
+| `solicitud_resuelta` | Al cerrarse el expediente | El solicitante, con la decisión y los comentarios |
+
+Los destinatarios se **derivan**: son los usuarios activos cuyo rol tiene el
+permiso de esa etapa. Mantener una lista de correos aparte se queda
+desactualizada en cuanto alguien cambia de puesto.
+
+### La API key no está en la base de datos
+
+`RESEND_API_KEY` es un **secreto de Supabase**, sólo visible para las Edge
+Functions. Guardarla en una tabla la expondría a cualquiera que consiga leerla,
+y una clave de envío permite suplantar a la institución por correo.
+
+La tabla `configuracion.correo` guarda sólo lo que no es secreto: remitente,
+nombre visible, responder-a, copia oculta y el interruptor de encendido. La
+pantalla muestra **si** la clave está puesta, nunca cuál es.
+
+```bash
+supabase secrets set RESEND_API_KEY=re_...
+supabase functions deploy enviar-correo
+supabase functions deploy probar-correo
+```
+
+### Plantillas en texto plano
+
+El administrador que cambia una frase no debería tener que escribir HTML ni
+poder romper la maqueta. Las plantillas son texto con `{{variables}}`, y la
+Edge Function las envuelve con tres reglas:
+
+- Línea en blanco → párrafo nuevo.
+- Bloque de líneas `Etiqueta: valor` → ficha de datos en tabla.
+- Línea corta y sin puntuación final → encabezado de sección.
+
+El cuerpo se **escapa** antes de insertarlo: una plantilla no puede inyectar
+HTML en el correo. La vista previa de la pantalla aplica las mismas reglas, así
+que lo que se ve es lo que llega.
+
+### Envío inmediato y red de seguridad
+
+Tras aprobar o presentar, el cliente llama a `enviar-correo` en modo «dispara y
+olvida»: no espera respuesta ni muestra el error. El usuario acaba de aprobar
+una solicitud — hacerle esperar a Resend, o mostrarle un error rojo por un
+correo cuando la aprobación **sí** se guardó, sólo genera dudas.
+
+La red de seguridad es un cron. Conviene programarlo en Supabase para recoger
+lo que quedó pendiente porque el navegador se cerró antes o Resend estaba caído:
+
+```sql
+select cron.schedule('vaciar-correos', '*/5 * * * *', $
+  select net.http_post(
+    url := 'https://<proyecto>.supabase.co/functions/v1/enviar-correo',
+    headers := '{"Authorization": "Bearer <service_role>"}'::jsonb
+  );
+$);
+```
+
+> Resend exige **verificar el dominio** antes de enviar desde él. Sin eso, el
+> envío de prueba devuelve «domain is not verified» — la pantalla muestra ese
+> mensaje tal cual, que es el útil.
+---
+
 ## Apariencia y color
 
 Cualquier usuario elige paleta y modo en **`/apariencia`**. La preferencia se
@@ -645,6 +732,7 @@ src/
     solicitudes/ Bandeja, alta, expediente y Rua Tracker
     actividades/ Árbol, editor de rama, importación CSV, periodo
     apariencia/  Paletas, modo claro/oscuro, auditoría de contraste
+    correo/      Configuración de Resend, plantillas y bitácora
     flujo/       Configuración de la cadena de validación
     periodos/    Alta, apertura y cierre de periodos
     usuarios/    Directorio, alta, edición y restablecimiento de clave
@@ -658,6 +746,7 @@ scripts/
   generar-tokens-css.ts    regenera tokens.css desde paletas.ts
 supabase/
   migrations/    esquema versionado
-  functions/     crear-usuario · restablecer-contrasena (Edge Functions)
+  functions/     crear-usuario · restablecer-contrasena
+                 enviar-correo · probar-correo · _compartido
   seed.sql       datos de demostración
 ```

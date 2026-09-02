@@ -3,9 +3,10 @@ dist
 dist-ssr
 *.tsbuildinfo
 *.local
-.env
-.env.local
-.env.*.local
+# TODO lo que empiece por .env queda fuera, salvo el ejemplo. Enumerar
+# nombres concretos falló: un `.env.respaldo` temporal se coló en un commit.
+.env*
+!.env.example
 
 # Repo de skills clonado (no forma parte de la app)
 skills/

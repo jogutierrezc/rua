@@ -30,6 +30,7 @@ export type EstadoSolicitud =
 export type Prioridad = 'normal' | 'alta' | 'urgente'
 export type EstadoPeriodo = 'planificado' | 'abierto' | 'cerrado'
 export type EstadoEtapa = 'bloqueada' | 'pendiente' | 'aprobada' | 'denegada' | 'omitida'
+export type EstadoCorreo = 'pendiente' | 'enviado' | 'fallido' | 'cancelado'
 export type AccionAuditoria = 'insert' | 'update' | 'delete' | 'login' | 'aprobar' | 'denegar'
 
 /**
@@ -353,9 +354,50 @@ export type ResultadoApertura = {
   actividades_creadas: number
 }
 
+/** Ajustes del remitente. La API key de Resend NO vive aquí: es un secreto de Supabase. */
+export type ConfigCorreo = {
+  activo?: boolean
+  remitente?: string
+  nombre_remitente?: string
+  responder_a?: string | null
+  copia_oculta?: string | null
+}
+
+export type PlantillaCorreoRow = {
+  codigo: string
+  nombre: string
+  descripcion: string | null
+  asunto: string
+  cuerpo: string
+  activa: boolean
+  variables: string[]
+  es_sistema: boolean
+  actualizado_en: string
+  actualizado_por: string | null
+}
+
+/** Fila de la bandeja de salida. El cuerpo está YA renderizado. */
+export type CorreoRow = {
+  id: string
+  destinatario: string
+  destinatario_nombre: string | null
+  asunto: string
+  cuerpo: string
+  plantilla_codigo: string | null
+  solicitud_id: string | null
+  estado: EstadoCorreo
+  intentos: number
+  error: string | null
+  proveedor_id: string | null
+  enviado_en: string | null
+  creado_en: string
+}
+
 export type ConfiguracionRow = {
   id: boolean
   apariencia: Json
+  /** Ajustes del remitente, con la forma de `ConfigCorreo`. */
+  correo: Json
   nombre_institucion: string
   actualizado_en: string
   actualizado_por: string | null
@@ -404,6 +446,8 @@ export interface Database {
       notificaciones: Tabla<NotificacionRow>
       auditoria: Tabla<AuditoriaRow>
       configuracion: Tabla<ConfiguracionRow>
+      plantillas_correo: Tabla<PlantillaCorreoRow>
+      correos: Tabla<CorreoRow>
     }
     Views: {
       v_actividades_arbol: { Row: ActividadArbolRow; Relationships: [] }
@@ -462,6 +506,7 @@ export interface Database {
       estado_periodo: EstadoPeriodo
       accion_auditoria: AccionAuditoria
       estado_etapa: EstadoEtapa
+      estado_correo: EstadoCorreo
     }
     CompositeTypes: { [_ in never]: never }
   }

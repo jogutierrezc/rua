@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Info, Lightbulb, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase, mensajeDeError } from '@/lib/supabase'
+import { dispararEnvioCorreos } from '@/lib/correo'
 import { cn } from '@/lib/cn'
 import { AYUDA_CODIGO, normalizarCodigo, validarCodigo } from '@/lib/codigos'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -143,6 +144,8 @@ export function NuevaSolicitudPage() {
       )
       void qc.invalidateQueries({ queryKey: ['solicitudes'] })
       navigate('/solicitudes')
+      // Los triggers ya encolaron los avisos; esto los empuja ahora.
+      dispararEnvioCorreos()
     },
     onError: (e) => toast.error(mensajeDeError(e)),
   })

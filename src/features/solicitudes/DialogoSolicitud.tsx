@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase, mensajeDeError } from '@/lib/supabase'
+import { dispararEnvioCorreos } from '@/lib/correo'
 import { cn } from '@/lib/cn'
 import { fechaRelativa } from '@/lib/format'
 import { ESTADO_SOLICITUD, PRIORIDAD, TIPO_SOLICITUD } from '@/lib/estados'
@@ -72,6 +73,8 @@ export function DialogoSolicitud({
       void qc.invalidateQueries({ queryKey: ['expediente'] })
       void qc.invalidateQueries({ queryKey: ['solicitudes'] })
       void qc.invalidateQueries({ queryKey: ['metricas'] })
+      // Los triggers ya encolaron los avisos; esto los empuja ahora.
+      dispararEnvioCorreos()
     },
     onError: (e) => toast.error(mensajeDeError(e)),
   })
