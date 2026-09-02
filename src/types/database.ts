@@ -310,6 +310,25 @@ export type SolicitudActividadDetalleRow = Omit<SolicitudActividadRow, 'creado_e
   principal_nomenclatura: string | null
 }
 
+/** Una fila de la hoja de programas, tal como la evalúa la previsualización. */
+export type FilaProgramaValidada = {
+  linea: number
+  registro_unico: string | null
+  snies: string | null
+  nombre: string | null
+  facultad: string | null
+  nivel: string | null
+  accion: 'crear' | 'actualizar' | 'error'
+  severidad: 'ok' | 'aviso' | 'error'
+  mensaje: string
+}
+
+export type ResultadoImportacionProgramas = {
+  creados: number
+  actualizados: number
+  omitidos: number
+}
+
 /** Lo que devuelve `fn_guardar_solicitud`. */
 export type ResultadoGuardado = {
   id: string
@@ -481,8 +500,13 @@ export type EstadoVigencia = 'sin_registro' | 'vencido' | 'por_vencer' | 'proxim
 
 export type ProgramaUdesRow = {
   id: string
-  codigo_unico: string
-  snies: string | null
+  /**
+   * Identificador interno de la Universidad. Opcional: no todos lo tienen, y
+   * en la tabla aparece como N/A cuando falta.
+   */
+  registro_unico: string | null
+  /** Código del Ministerio. Es lo que identifica al programa frente al Estado. */
+  snies: string
   facultad: string
   nivel: NivelPrograma
   nombre: string
@@ -672,6 +696,14 @@ export interface Database {
       fn_decidir_etapa: {
         Args: { p_solicitud_id: string; p_aprobar: boolean; p_justificacion: string }
         Returns: ResultadoDecision[]
+      }
+      fn_validar_importacion_programas: {
+        Args: { p_filas: Record<string, string>[] }
+        Returns: FilaProgramaValidada[]
+      }
+      fn_importar_programas: {
+        Args: { p_filas: Record<string, string>[]; p_modo?: ModoImportacion }
+        Returns: ResultadoImportacionProgramas[]
       }
       fn_guardar_solicitud: {
         Args: {

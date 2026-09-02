@@ -111,6 +111,14 @@ export const RUTAS_MENU: RutaMenu[] = [
     grupo: 'planeacion',
   },
   {
+    ruta: '/planeacion/importar',
+    inicial: true,
+    etiqueta: 'Importar Programas',
+    permiso: 'planeacion.administrar',
+    icono: 'Database',
+    grupo: 'planeacion',
+  },
+  {
     ruta: '/planeacion/otra',
     inicial: true,
     etiqueta: 'Otra Información de Programas',

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, MessageSquare, Paperclip, Plus, Search } from 'lucide-react'
+import { AlertTriangle, MessageSquare, Paperclip, Plus, Search, Upload } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/cn'
 import { tiempoRestante } from '@/lib/format'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/Button'
+import { LinkButton } from '@/components/ui/LinkButton'
 import { Input, Select } from '@/components/ui/Field'
 import {
   Badge,
@@ -67,7 +68,9 @@ export function ProgramasUdesPage() {
 
       if (filtros.busqueda.trim()) {
         const t = `%${filtros.busqueda.trim()}%`
-        q = q.or(`nombre.ilike.${t},codigo_unico.ilike.${t},snies.ilike.${t},facultad.ilike.${t}`)
+        q = q.or(
+          `nombre.ilike.${t},registro_unico.ilike.${t},snies.ilike.${t},facultad.ilike.${t}`,
+        )
       }
 
       const { data, error, count } = await q
@@ -88,13 +91,18 @@ export function ProgramasUdesPage() {
         descripcion="La oferta académica con su registro calificado, su acreditación y sus cupos aprobados."
         acciones={
           puede('planeacion.administrar') && (
-            <Button
-              variante="primario"
-              onClick={() => setCreando(true)}
-              iconoIzq={<Plus className="size-4" />}
-            >
-              Nuevo programa
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <LinkButton to="/planeacion/importar" iconoIzq={<Upload className="size-4" />}>
+                Importar
+              </LinkButton>
+              <Button
+                variante="primario"
+                onClick={() => setCreando(true)}
+                iconoIzq={<Plus className="size-4" />}
+              >
+                Nuevo programa
+              </Button>
+            </div>
           )
         }
       />
@@ -109,7 +117,7 @@ export function ProgramasUdesPage() {
             />
             <Input
               aria-label="Buscar programas"
-              placeholder="Nombre, código único, SNIES o facultad…"
+              placeholder="Nombre, registro único, SNIES o facultad…"
               className="pl-8"
               value={filtros.busqueda}
               onChange={(e) => {
@@ -186,8 +194,8 @@ export function ProgramasUdesPage() {
             <TableShell>
               <thead>
                 <tr>
-                  <Th className="w-28">Código</Th>
                   <Th className="w-20">SNIES</Th>
+                  <Th className="w-28">Registro único</Th>
                   <Th>Programa</Th>
                   <Th className="w-36">Nivel</Th>
                   <Th className="w-36">Campus</Th>
@@ -208,8 +216,13 @@ export function ProgramasUdesPage() {
                         p.estado_vigencia === 'por_vencer' && 'border-l-2 border-l-warning',
                       )}
                     >
-                      <Td className="font-mono text-fg-muted">{p.codigo_unico}</Td>
-                      <Td className="text-fg-muted">{p.snies ?? '—'}</Td>
+                      <Td className="font-mono text-fg-muted">{p.snies}</Td>
+                      {/* El registro único es interno y opcional: cuando falta
+                          se dice N/A, que es distinto de un guion —«no aplica»
+                          y no «no lo sé»—. */}
+                      <Td className="font-mono text-fg-subtle">
+                        {p.registro_unico ?? 'N/A'}
+                      </Td>
 
                       <Td className="max-w-0">
                         <span className="block truncate font-medium text-fg">{p.nombre}</span>

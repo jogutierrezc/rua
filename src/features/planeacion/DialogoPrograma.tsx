@@ -25,7 +25,7 @@ import type {
 const ANOS_VIGENCIA_RC = 7
 
 const VACIO = {
-  codigo_unico: '',
+  registro_unico: '',
   snies: '',
   facultad: '',
   nivel: 'profesional' as NivelPrograma,
@@ -71,8 +71,8 @@ export function DialogoPrograma({
   useEffect(() => {
     if (!programa) return
     setF({
-      codigo_unico: programa.codigo_unico,
-      snies: programa.snies ?? '',
+      registro_unico: programa.registro_unico ?? '',
+      snies: programa.snies,
       facultad: programa.facultad,
       nivel: programa.nivel,
       nombre: programa.nombre,
@@ -121,7 +121,10 @@ export function DialogoPrograma({
   }
 
   const errores: Record<string, string> = {}
-  if (!f.codigo_unico.trim()) errores.codigo_unico = 'El código único es obligatorio.'
+  // El SNIES es lo que identifica al programa frente al Ministerio y lo que
+  // empareja las filas al importar; el registro único es interno y puede no
+  // existir todavía.
+  if (f.snies.trim().length < 3) errores.snies = 'El código SNIES es obligatorio.'
   if (f.nombre.trim().length < 4) errores.nombre = 'Escribe el nombre completo del programa.'
   if (!f.facultad.trim()) errores.facultad = 'Indica la facultad.'
   if (!f.campus.trim()) errores.campus = 'Indica el campus.'
@@ -143,7 +146,7 @@ export function DialogoPrograma({
       let nombreArchivo = programa?.rc_archivo_nombre ?? null
 
       if (archivo) {
-        const clave = `${nombreSeguro(f.codigo_unico) || 'programa'}/${Date.now()}-${nombreSeguro(
+        const clave = `${nombreSeguro(f.registro_unico || f.snies) || 'programa'}/${Date.now()}-${nombreSeguro(
           archivo.name,
         )}`
         const { error } = await supabase.storage
@@ -155,8 +158,8 @@ export function DialogoPrograma({
       }
 
       const fila = {
-        codigo_unico: f.codigo_unico.trim(),
-        snies: f.snies.trim() || null,
+        registro_unico: f.registro_unico.trim() || null,
+        snies: f.snies.trim(),
         facultad: f.facultad.trim(),
         nivel: f.nivel,
         nombre: f.nombre.trim(),
@@ -244,28 +247,38 @@ export function DialogoPrograma({
           <div className="flex flex-col gap-4">
             {/* Identificación ------------------------------------------- */}
             <Card className="grid gap-4 p-4 sm:grid-cols-6">
-              <Campo etiqueta="Código único" requerido error={ver('codigo_unico')} className="sm:col-span-2">
+              <Campo
+                etiqueta="Código SNIES"
+                requerido
+                error={ver('snies')}
+                className="sm:col-span-2"
+                pista="Lo asigna el Ministerio. Identifica al programa."
+              >
                 {({ id, describedBy, invalido }) => (
                   <Input
                     id={id}
                     aria-describedby={describedBy}
                     aria-invalid={invalido}
-                    placeholder="PRG-0142"
-                    value={f.codigo_unico}
-                    onChange={(e) => set('codigo_unico', e.target.value)}
-                  />
-                )}
-              </Campo>
-
-              <Campo etiqueta="Código SNIES" className="sm:col-span-2" pista="Opcional mientras esté en trámite.">
-                {({ id, describedBy }) => (
-                  <Input
-                    id={id}
-                    aria-describedby={describedBy}
                     inputMode="numeric"
                     placeholder="105432"
                     value={f.snies}
                     onChange={(e) => set('snies', e.target.value)}
+                  />
+                )}
+              </Campo>
+
+              <Campo
+                etiqueta="Registro único"
+                className="sm:col-span-2"
+                pista="Opcional. Identificador interno de la Universidad."
+              >
+                {({ id, describedBy }) => (
+                  <Input
+                    id={id}
+                    aria-describedby={describedBy}
+                    placeholder="PRG-0142"
+                    value={f.registro_unico}
+                    onChange={(e) => set('registro_unico', e.target.value)}
                   />
                 )}
               </Campo>

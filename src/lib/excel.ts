@@ -297,3 +297,173 @@ export async function exportarActividadesExcel(
     fileName: nombreArchivo,
   })
 }
+
+// -----------------------------------------------------------------------------
+// Programas UDES
+// -----------------------------------------------------------------------------
+
+/**
+ * Estructura recomendada de la hoja de programas.
+ *
+ * El servidor acepta además otros nombres para la misma columna —«codigo_snies»
+ * por «snies», «nombre_del_programa» por «nombre»—, porque la hoja viene de una
+ * oficina que la lleva escribiendo años y obligarla a renombrar cabeceras para
+ * poder importar es la fricción que hace que la gente vuelva a teclear a mano.
+ * Ésta es la forma canónica, la que se descarga y la que se documenta.
+ */
+export const COLUMNAS_PROGRAMAS = [
+  'registro_unico',
+  'snies',
+  'facultad',
+  'nivel',
+  'nombre',
+  'campus',
+  'modalidad',
+  'rc_resolucion',
+  'rc_fecha_registro',
+  'rc_fecha_vencimiento',
+  'ac_resolucion',
+  'ac_fecha_resolucion',
+  'cupos_aprobados',
+  'tipo_cupos',
+  'ano_creacion',
+  'cumple_ci_para_ac',
+] as const
+
+const ANCHOS_PROGRAMAS = [
+  { width: 16 }, { width: 12 }, { width: 30 }, { width: 22 }, { width: 44 },
+  { width: 18 }, { width: 14 }, { width: 20 }, { width: 18 }, { width: 20 },
+  { width: 20 }, { width: 18 }, { width: 14 }, { width: 22 }, { width: 14 },
+  { width: 18 },
+]
+
+export async function descargarPlantillaProgramas() {
+  const { default: writeXlsxFile } = await import('write-excel-file')
+
+  const datos: Celda[][] = [
+    COLUMNAS_PROGRAMAS.map((c) => cabecera(c)),
+    [
+      texto('PRG-0142'),
+      texto('105432'),
+      texto('Facultad de Ingenierías'),
+      texto('Profesional'),
+      texto('Ingeniería de Sistemas'),
+      texto('Bucaramanga'),
+      texto('Presencial'),
+      texto('012345 de 2019'),
+      texto('2019-08-14'),
+      texto('2026-08-14'),
+      texto('006789 de 2022'),
+      texto('2022-03-02'),
+      texto('120'),
+      texto('Semestral'),
+      texto('2014'),
+      texto('Sí'),
+    ],
+    [
+      // Sin registro único: es opcional a propósito, y el ejemplo lo enseña.
+      texto(null),
+      texto('109877'),
+      texto('Facultad de Ciencias de la Salud'),
+      texto('Maestría'),
+      texto('Maestría en Salud Pública'),
+      texto('Valledupar'),
+      texto('Virtual'),
+      texto('004321 de 2021'),
+      texto('15/06/2021'),
+      texto('15/06/2028'),
+      texto(null),
+      texto(null),
+      texto('40'),
+      texto('Cohorte'),
+      texto('2020'),
+      texto('No'),
+    ],
+  ]
+
+  const fila = (
+    columna: string,
+    obligatoria: string,
+    admitidos: string,
+    nota: string,
+  ): Celda[] => [titulo(columna), texto(obligatoria), texto(admitidos), { value: nota, wrap: true }]
+
+  const instrucciones: Celda[][] = [
+    [
+      { value: 'Columna', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: '¿Obligatoria?', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: 'Valores admitidos', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: 'Notas', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+    ],
+    fila(
+      'registro_unico',
+      'No',
+      'Texto libre',
+      'Identificador interno de la Universidad. Puede quedar vacío: en la tabla aparecerá como N/A. Si lo pones, no puede estar ya en otro programa.',
+    ),
+    fila(
+      'snies',
+      'Sí',
+      'Código del Ministerio',
+      'Es la columna que empareja: si el SNIES ya existe, el programa se ACTUALIZA; si no, se crea. Formatea la columna como Texto para que Excel no se coma los ceros a la izquierda.',
+    ),
+    fila('facultad', 'Sí', 'Texto libre', 'Tal como se nombra oficialmente.'),
+    fila(
+      'nivel',
+      'Sí',
+      'Técnico Profesional · Tecnológico · Profesional · Especialización · Especialización médico-quirúrgica · Maestría · Doctorado',
+      'Se admite con o sin tildes. «Pregrado» y «Universitario» se entienden como Profesional.',
+    ),
+    fila('nombre', 'Sí', 'Texto libre', 'El nombre oficial del programa.'),
+    fila('campus', 'No', 'Texto libre', 'Si se deja vacío al crear, queda como «Sin campus».'),
+    fila(
+      'modalidad',
+      'Sí',
+      'Presencial · A distancia · Virtual · Dual',
+      'Se admite con o sin tildes.',
+    ),
+    fila('rc_resolucion', 'No', 'Texto libre', 'N.º de resolución del registro calificado.'),
+    fila(
+      'rc_fecha_registro',
+      'No',
+      'AAAA-MM-DD o DD/MM/AAAA',
+      'Sólo esos dos formatos. Adivinar entre 03/04 y 04/03 sería inventarse la fecha.',
+    ),
+    fila(
+      'rc_fecha_vencimiento',
+      'No',
+      'AAAA-MM-DD o DD/MM/AAAA',
+      'De aquí sale la cuenta atrás y el preaviso de los tres meses. Sin ella, el programa se guarda pero queda fuera de la vigilancia.',
+    ),
+    fila('ac_resolucion', 'No', 'Texto libre', 'N.º de resolución de acreditación.'),
+    fila('ac_fecha_resolucion', 'No', 'AAAA-MM-DD o DD/MM/AAAA', ''),
+    fila('cupos_aprobados', 'No', 'Número entero', 'Cupos de estudiantes aprobados.'),
+    fila(
+      'tipo_cupos',
+      'No',
+      'Trimestral · Semestral · Anual · Cohorte · Variación por cohortes',
+      '',
+    ),
+    fila('ano_creacion', 'No', 'Año de cuatro cifras', ''),
+    fila(
+      'cumple_ci_para_ac',
+      'No',
+      'Sí / No',
+      'Condiciones Iniciales para Acreditación en Alta Calidad. Se admite Sí, X, 1 o true.',
+    ),
+    [],
+    [
+      {
+        value:
+          'Una celda vacía en una fila que actualiza significa «no lo sé», no «bórralo»: nunca borra un dato que ya estuviera guardado.',
+        wrap: true,
+      },
+    ],
+  ]
+
+  await writeXlsxFile([datos, instrucciones], {
+    sheets: ['Programas', 'Instrucciones'],
+    columns: [ANCHOS_PROGRAMAS, [{ width: 22 }, { width: 14 }, { width: 46 }, { width: 62 }]],
+    fileName: 'plantilla-programas.xlsx',
+  })
+}

@@ -116,7 +116,12 @@ export function DialogoDetallePrograma({
         <header className="flex shrink-0 items-start gap-3 border-b border-line p-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-body-sm text-fg-muted">{programa.codigo_unico}</span>
+              <span className="font-mono text-body-sm text-fg-muted">
+                SNIES {programa.snies}
+              </span>
+              <span className="text-body-sm text-fg-subtle">
+                Registro único: {programa.registro_unico ?? 'N/A'}
+              </span>
               <Badge tono={vigencia.tono} punto>
                 {vigencia.etiqueta}
               </Badge>
@@ -206,7 +211,7 @@ export function DialogoDetallePrograma({
                     etiqueta="Fecha de la resolución"
                     valor={fechaLarga(programa.ac_fecha_resolucion)}
                   />
-                  <Dato etiqueta="Código SNIES" valor={programa.snies} />
+                  <Dato etiqueta="Registro único" valor={programa.registro_unico ?? 'N/A'} />
                   <Dato
                     etiqueta="Cupos aprobados"
                     valor={programa.cupos_aprobados?.toString()}

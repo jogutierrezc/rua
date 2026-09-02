@@ -19,6 +19,7 @@ import { FlujoPage } from '@/features/flujo/FlujoPage'
 import { CorreoPage } from '@/features/correo/CorreoPage'
 import { MenuPage } from '@/features/menu/MenuPage'
 import { ProgramasUdesPage } from '@/features/planeacion/ProgramasUdesPage'
+import { ImportarProgramasPage } from '@/features/planeacion/ImportarProgramasPage'
 import {
   OtraInformacionPage,
   ProgramasSniesPage,
@@ -121,6 +122,14 @@ export function App() {
               element={
                 <RequierePermiso permiso="planeacion.ver">
                   <ProgramasUdesPage />
+                </RequierePermiso>
+              }
+            />
+            <Route
+              path="importar"
+              element={
+                <RequierePermiso permiso="planeacion.administrar">
+                  <ImportarProgramasPage />
                 </RequierePermiso>
               }
             />
