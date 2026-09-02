@@ -15,9 +15,28 @@ import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  // `x-application-name` la añade el cliente en `src/lib/supabase.ts`. Si no
+  // está declarada aquí, el navegador corta en el preflight y la petición no
+  // llega a salir — un fallo que sólo aparece desde el navegador y que con
+  // curl no se reproduce jamás.
+  'Access-Control-Allow-Headers':
+    'authorization, x-client-info, apikey, content-type, x-application-name',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
+
+/**
+ * Cabeceras del preflight, devolviendo las que el navegador PIDE.
+ *
+ * Una lista fija obliga a redesplegar las cuatro funciones cada vez que el
+ * cliente añade una cabecera, y el fallo sólo se descubre en producción.
+ * Reflejar lo pedido no abre nada: el permiso se comprueba más abajo con el
+ * token de quien llama, no con la lista de cabeceras.
+ */
+const preflight = (req: Request) => ({
+  ...CORS,
+  'Access-Control-Allow-Headers':
+    req.headers.get('Access-Control-Request-Headers') ?? CORS['Access-Control-Allow-Headers'],
+})
 
 function responder(cuerpo: unknown, status = 200) {
   return new Response(JSON.stringify(cuerpo), {
@@ -30,7 +49,7 @@ const error = (mensaje: string, status: number, campo?: string) =>
   responder({ error: mensaje, campo }, status)
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: preflight(req) })
   if (req.method !== 'POST') return error('Método no permitido.', 405)
 
   const url = Deno.env.get('SUPABASE_URL')
