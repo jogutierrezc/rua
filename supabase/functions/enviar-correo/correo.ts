@@ -1,5 +1,12 @@
 /**
- * Maquetación y envío por Resend, compartido por las dos funciones de correo.
+ * Maquetación y envío por Resend.
+ *
+ * COPIA DELIBERADA: este archivo es idéntico en `enviar-correo/` y en
+ * `probar-correo/`. Vivía en `_compartido/`, pero el despliegue desde el panel
+ * de Supabase sube ÚNICAMENTE la carpeta de la función, así que un import a una
+ * carpeta hermana no se empaqueta y el bundler falla con «Module not found».
+ * Cada función se basta a sí misma para poder desplegarse desde el panel.
+ * Si tocas algo aquí, copia el archivo a la otra función.
  *
  * Las plantillas se guardan en TEXTO PLANO a propósito: el administrador que
  * cambia una frase no debería tener que escribir HTML ni poder romper la

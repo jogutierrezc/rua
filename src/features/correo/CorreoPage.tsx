@@ -6,6 +6,7 @@ import {
   Inbox,
   KeyRound,
   Mail,
+  MinusCircle,
   RefreshCw,
   Send,
   XCircle,
@@ -32,6 +33,23 @@ import type { TonoBadge } from '@/components/ui/primitives'
 import type { ConfigCorreo, CorreoRow, EstadoCorreo, PlantillaCorreoRow } from '@/types/database'
 
 type Pestana = 'configuracion' | 'plantillas' | 'bitacora'
+
+/**
+ * Cuánto se espera a la Edge Function antes de darla por caída.
+ *
+ * Una función a medio desplegar no devuelve un error: no devuelve NADA. Sin
+ * este corte la pantalla se queda esperando para siempre, que sobre el papel
+ * es indistinguible de «aún no ha cargado».
+ */
+const LIMITE_MS = 15_000
+
+interface Diagnostico {
+  api_key: boolean
+  remitente: boolean
+  activo: boolean
+  /** No hubo respuesta: la función no está desplegada o su despliegue quedó roto. */
+  inalcanzable?: boolean
+}
 
 const ESTADO_CORREO: Record<EstadoCorreo, { etiqueta: string; tono: TonoBadge }> = {
   pendiente: { etiqueta: 'En cola', tono: 'aviso' },
@@ -103,12 +121,19 @@ function Configuracion() {
   })
 
   /** Diagnóstico del servidor: qué falta para poder enviar. */
-  const { data: diagnostico, refetch: rediagnosticar } = useQuery({
+  const {
+    data: diagnostico,
+    isPending: diagnosticando,
+    refetch: rediagnosticar,
+  } = useQuery({
     queryKey: ['correo', 'diagnostico'],
-    queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke('probar-correo', { body: {} })
+    queryFn: async (): Promise<Diagnostico> => {
+      const { data, error } = await supabase.functions.invoke('probar-correo', {
+        body: {},
+        timeout: LIMITE_MS,
+      })
       if (error) return { api_key: false, remitente: false, activo: false, inalcanzable: true }
-      return (data as { diagnostico: Record<string, boolean> }).diagnostico
+      return (data as { diagnostico: Diagnostico }).diagnostico
     },
     retry: false,
   })
@@ -135,13 +160,22 @@ function Configuracion() {
     mutationFn: async () => {
       const { data, error } = await supabase.functions.invoke('probar-correo', {
         body: { destinatario: prueba.trim() },
+        timeout: LIMITE_MS,
       })
       if (error) {
+        // El motivo útil viene en el cuerpo: «domain not verified», «falta
+        // RESEND_API_KEY». Si no hay cuerpo es que no hubo respuesta, y eso es
+        // un problema de despliegue, no de configuración: hay que decirlo así
+        // en vez de un genérico que manda a revisar la clave sin motivo.
         const ctx = error as { context?: { json?: () => Promise<unknown> } }
         const detalle = (await ctx.context?.json?.().catch(() => null)) as
           | { error?: string }
           | null
-        throw new Error(detalle?.error ?? 'No se pudo enviar el correo de prueba.')
+        throw new Error(
+          detalle?.error ??
+            'La función «probar-correo» no respondió. Vuelve a desplegarla en Supabase: ' +
+              'mientras no esté en pie no se puede enviar ni diagnosticar nada.',
+        )
       }
       return data
     },
@@ -156,6 +190,8 @@ function Configuracion() {
 
   if (isPending || !config) return <Skeleton className="h-64" />
 
+  // Sin respuesta de la función no hay diagnóstico: ni bueno ni malo, ausente.
+  const desconocido = diagnostico?.inalcanzable ?? true
   const listo = diagnostico?.api_key && diagnostico?.remitente && config.activo
 
   return (
@@ -288,46 +324,68 @@ function Configuracion() {
       <Card className="lg:sticky lg:top-20">
         <CardHeader titulo="Estado" icono={<KeyRound className="size-4" />} />
         <ul className="divide-y divide-line">
-          {[
+          {/*
+            Tres estados, no dos. Si la función no contesta no sabemos si la
+            clave está puesta, y pintar una cruz sería AFIRMAR que falta:
+            exactamente el rastro falso que hace perder una tarde.
+          */}
+          {(
             [
-              'API key de Resend',
-              diagnostico?.api_key,
-              'Secreto de Supabase, nunca en la base de datos.',
-            ],
-            ['Remitente configurado', diagnostico?.remitente, 'Con dominio verificado en Resend.'],
-            ['Envío activado', config.activo, 'El interruptor de arriba.'],
-          ].map(([etiqueta, ok, pista]) => (
-            <li key={etiqueta as string} className="flex items-start gap-2.5 px-4 py-3">
-              {ok ? (
+              [
+                'API key de Resend',
+                desconocido ? undefined : diagnostico?.api_key,
+                'Secreto de Supabase, nunca en la base de datos.',
+              ],
+              [
+                'Remitente configurado',
+                desconocido ? undefined : diagnostico?.remitente,
+                'Con dominio verificado en Resend.',
+              ],
+              ['Envío activado', config.activo, 'El interruptor de arriba.'],
+            ] as [string, boolean | undefined, string][]
+          ).map(([etiqueta, ok, pista]) => (
+            <li key={etiqueta} className="flex items-start gap-2.5 px-4 py-3">
+              {ok === undefined ? (
+                <MinusCircle aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-subtle" />
+              ) : ok ? (
                 <CheckCircle2 aria-hidden className="mt-0.5 size-4 shrink-0 text-success" />
               ) : (
                 <XCircle aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-subtle" />
               )}
               <span className="min-w-0">
-                <span className="block text-body-sm text-fg">{etiqueta as string}</span>
-                <span className="block text-body-sm text-fg-subtle">{pista as string}</span>
+                <span className="block text-body-sm text-fg">{etiqueta}</span>
+                <span className="block text-body-sm text-fg-subtle">{pista}</span>
               </span>
             </li>
           ))}
         </ul>
 
-        {!listo && (
+        {!listo && !diagnosticando && (
           <div className="border-t border-line bg-warning-soft p-4 text-body-sm text-warning-softFg">
             <p className="flex items-start gap-2">
               <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>
-                Todavía no se enviarán notificaciones.
-                {!diagnostico?.api_key && (
-                  <>
-                    {' '}
-                    Falta la clave: ejecuta{' '}
-                    <code className="break-all font-mono">
-                      supabase secrets set RESEND_API_KEY=re_...
-                    </code>
-                    .
-                  </>
-                )}
-              </span>
+              {desconocido ? (
+                <span>
+                  La función <code className="font-mono">probar-correo</code> no responde, así que
+                  no se puede saber cómo está configurado el envío. Vuelve a desplegarla en
+                  Supabase; hasta entonces esta lista no dice nada sobre la clave ni sobre el
+                  remitente.
+                </span>
+              ) : (
+                <span>
+                  Todavía no se enviarán notificaciones.
+                  {!diagnostico?.api_key && (
+                    <>
+                      {' '}
+                      Falta la clave: ejecuta{' '}
+                      <code className="break-all font-mono">
+                        supabase secrets set RESEND_API_KEY=re_...
+                      </code>
+                      .
+                    </>
+                  )}
+                </span>
+              )}
             </p>
           </div>
         )}

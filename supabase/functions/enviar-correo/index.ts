@@ -17,7 +17,7 @@
  *   supabase functions deploy enviar-correo
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-import { CORS, maquetar, enviarPorResend, type ConfigCorreo } from '../_compartido/correo.ts'
+import { CORS, maquetar, enviarPorResend, type ConfigCorreo } from './correo.ts'
 
 /** Tope por invocación: una Edge Function tiene límite de tiempo. */
 const LOTE = 25

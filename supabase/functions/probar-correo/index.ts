@@ -17,7 +17,7 @@ import {
   maquetar,
   enviarPorResend,
   type ConfigCorreo,
-} from '../_compartido/correo.ts'
+} from './correo.ts'
 
 const responder = (cuerpo: unknown, status = 200) =>
   new Response(JSON.stringify(cuerpo), {
