@@ -17,12 +17,17 @@ import { AparienciaPage } from '@/features/apariencia/AparienciaPage'
 import { PeriodosPage } from '@/features/periodos/PeriodosPage'
 import { FlujoPage } from '@/features/flujo/FlujoPage'
 import { CorreoPage } from '@/features/correo/CorreoPage'
+import { TutorialPage } from '@/features/tutorial/TutorialPage'
 import { EmptyState } from '@/components/ui/primitives'
 import { LinkButton } from '@/components/ui/LinkButton'
 
 export function App() {
   return (
     <Routes>
+      {/* Abierto a todo el mundo, con sesión o sin ella: es material de
+          divulgación, y quien ya entró también querrá consultarlo. */}
+      <Route path="/tutorial" element={<TutorialPage />} />
+
       <Route element={<RutaPublica />}>
         <Route path="/entrar" element={<LoginPage />} />
       </Route>

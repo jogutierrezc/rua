@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { AlertCircle, ArrowRight, Compass, Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useAuth } from './AuthProvider'
 import { Button } from '@/components/ui/Button'
 import { Campo, Input } from '@/components/ui/Field'
 import { Marca } from '@/components/layout/Marca'
+import { LinkButton } from '@/components/ui/LinkButton'
 
 export function LoginPage() {
   const { entrar } = useAuth()
@@ -92,6 +93,15 @@ export function LoginPage() {
                 </div>
               ))}
             </dl>
+
+            <LinkButton
+              to="/tutorial"
+              className="mt-8 border-white/25 bg-white/10 text-white hover:border-white/40 hover:bg-white/15"
+              iconoIzq={<Compass className="size-4" />}
+              iconoDer={<ArrowRight className="size-4" />}
+            >
+              Conoce a RUA
+            </LinkButton>
           </div>
 
           <p className="text-body-sm text-white/40">
@@ -209,7 +219,17 @@ export function LoginPage() {
             </Button>
           </form>
 
-          <p className="mt-8 border-t border-line pt-5 text-center text-body-sm text-fg-subtle">
+          <LinkButton
+            to="/tutorial"
+            tamano="sm"
+            variante="fantasma"
+            className="mt-6 w-full"
+            iconoIzq={<Compass className="size-4" />}
+          >
+            ¿Primera vez? Conoce a RUA
+          </LinkButton>
+
+          <p className="mt-6 border-t border-line pt-5 text-center text-body-sm text-fg-subtle">
             ¿Problemas para entrar?{' '}
             <a href="#soporte" className="text-primary underline-offset-4 hover:underline">
               Contacta a Soporte TI
