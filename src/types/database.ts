@@ -421,6 +421,43 @@ export type ResultadoApertura = {
 }
 
 /** Ajustes del remitente. La API key de Resend NO vive aquí: es un secreto de Supabase. */
+/**
+ * Un grupo plegable de la barra lateral.
+ *
+ * La base manda la presentación del menú; el código sigue mandando qué rutas
+ * existen y qué permiso las protege. Ver `src/lib/rutas.ts`.
+ */
+export type MenuGrupoRow = {
+  codigo: string
+  titulo: string
+  orden: number
+  activo: boolean
+  es_sistema: boolean
+  creado_en: string
+  actualizado_en: string
+}
+
+export type MenuEntradaRow = {
+  codigo: string
+  grupo_codigo: string
+  etiqueta: string
+  ruta: string
+  /** Nombre del catálogo de `src/lib/iconos.ts`. Uno desconocido cae en el neutro. */
+  icono: string
+  /**
+   * Espeja el permiso que exige la guarda de la ruta. Decide si el enlace se
+   * pinta; NO da ni quita acceso — de eso se encargan RLS y el enrutador.
+   */
+  permiso_codigo: CodigoPermiso | null
+  orden: number
+  /** Cosmético: esconde el enlace, no restringe nada. */
+  visible: boolean
+  coincidencia_exacta: boolean
+  es_sistema: boolean
+  creado_en: string
+  actualizado_en: string
+}
+
 export type ConfigCorreo = {
   activo?: boolean
   remitente?: string
@@ -521,6 +558,8 @@ export interface Database {
       auditoria: Tabla<AuditoriaRow>
       configuracion: Tabla<ConfiguracionRow>
       plantillas_correo: Tabla<PlantillaCorreoRow>
+      menu_grupos: Tabla<MenuGrupoRow>
+      menu_entradas: Tabla<MenuEntradaRow>
       correos: Tabla<CorreoRow>
     }
     Views: {

@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase'
+import { obtenerBearerTokenSesion, supabase } from '@/lib/supabase'
 import { dispararEnvioCorreos } from '@/lib/correo'
 import { cn } from '@/lib/cn'
 import { Button } from '@/components/ui/Button'
@@ -125,7 +125,13 @@ export function DialogoCrearUsuario({ onCerrar }: { onCerrar: () => void }) {
   // ---------------------------------------------------------------------------
   const crear = useMutation({
     mutationFn: async () => {
+      const token = await obtenerBearerTokenSesion()
+      if (!token) {
+        throw new Error('Tu sesión expiró o no se pudo renovar. Vuelve a iniciar sesión.')
+      }
+
       const { data, error } = await supabase.functions.invoke('crear-usuario', {
+        headers: { Authorization: `Bearer ${token}` },
         body: {
           nombre_completo: f.nombre_completo.trim(),
           numero_documento: f.numero_documento.trim(),
@@ -172,8 +178,11 @@ export function DialogoCrearUsuario({ onCerrar }: { onCerrar: () => void }) {
       dispararEnvioCorreos()
     },
     onError: (e) => {
-      const err = e as { mensaje?: string; campo?: string }
-      setErrorServidor({ mensaje: err.mensaje ?? 'Error inesperado.', campo: err.campo })
+      const err = e as { mensaje?: string; message?: string; campo?: string }
+      setErrorServidor({
+        mensaje: err.mensaje ?? err.message ?? 'Error inesperado.',
+        campo: err.campo,
+      })
     },
   })
 

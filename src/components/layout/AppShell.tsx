@@ -3,82 +3,55 @@ import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   Bell,
-  CalendarClock,
-  CalendarCog,
-  ChartNoAxesCombined,
   ChevronDown,
-  FileClock,
-  GitBranch,
-  Mail,
-  Inbox,
   LogOut,
   Menu,
   Palette,
   Monitor,
   Moon,
-  Network,
   Search,
-  ShieldCheck,
   Sun,
-  Users,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { iconoDe } from '@/lib/iconos'
 import { useAuth } from '@/features/auth/AuthProvider'
+import { useMenu } from '@/features/menu/useMenu'
 import { Marca } from './Marca'
 import { useTema } from '@/features/apariencia/TemaProvider'
 import type { PreferenciaModo } from '@/features/apariencia/TemaProvider'
 import { Avatar, Badge } from '@/components/ui/primitives'
 import { Button } from '@/components/ui/Button'
-import type { CodigoPermiso } from '@/types/database'
 
 // -----------------------------------------------------------------------------
 // Navegación
 //
-// Los nombres describen su CONTENIDO, no una categoría vaga. "Solicitudes"
-// dice qué hay dentro; "Gestión" no diría nada.
+// Ya no vive aquí. El menú es dato: lo configura el administrador desde
+// /menu y lo sirve `useMenu`, que además se encarga de que haya barra lateral
+// aunque la consulta falle. Lo que sigue viviendo en el código es el catálogo
+// de rutas y permisos, en `src/lib/rutas.ts`.
 // -----------------------------------------------------------------------------
-interface Entrada {
-  a: string
-  etiqueta: string
-  icono: typeof Inbox
-  permiso?: CodigoPermiso
-  /** `end` evita que la ruta raíz quede activa en todas las demás */
-  end?: boolean
-}
 
-interface Grupo {
-  titulo: string
-  entradas: Entrada[]
-}
+/**
+ * Grupos plegados, recordados entre sesiones.
+ *
+ * Se guarda lo CERRADO y no lo abierto, a propósito: así un grupo nuevo —una
+ * función que se añada mañana— aparece desplegado sin que nadie tenga que
+ * saber que existe. Guardar lo abierto lo dejaría oculto para todo el que ya
+ * hubiera usado el portal.
+ */
+const CLAVE_PLEGADOS = 'rua.menu.plegados'
 
-const NAVEGACION: Grupo[] = [
-  {
-    titulo: 'Análisis',
-    entradas: [
-      { a: '/', etiqueta: 'Inteligencia de Negocios', icono: ChartNoAxesCombined, end: true, permiso: 'bi.consultar' },
-    ],
-  },
-  {
-    titulo: 'Operación',
-    entradas: [
-      { a: '/solicitudes', etiqueta: 'Solicitudes', icono: Inbox, permiso: 'solicitudes.crear' },
-      { a: '/actividades', etiqueta: 'Estructura de Actividades', icono: Network, permiso: 'actividades.ver' },
-      { a: '/periodo', etiqueta: 'Actividades del Periodo', icono: CalendarClock, permiso: 'actividades.ver' },
-    ],
-  },
-  {
-    titulo: 'Administración',
-    entradas: [
-      { a: '/usuarios', etiqueta: 'Usuarios', icono: Users, permiso: 'usuarios.ver' },
-      { a: '/roles', etiqueta: 'Roles y Permisos', icono: ShieldCheck, permiso: 'roles.administrar' },
-      { a: '/periodos', etiqueta: 'Periodos Académicos', icono: CalendarCog, permiso: 'periodos.administrar' },
-      { a: '/flujo', etiqueta: 'Flujo de Validación', icono: GitBranch, permiso: 'roles.administrar' },
-      { a: '/correo', etiqueta: 'Notificaciones', icono: Mail, permiso: 'roles.administrar' },
-      { a: '/auditoria', etiqueta: 'Bitácora', icono: FileClock, permiso: 'auditoria.consultar' },
-    ],
-  },
-]
+function leerPlegados(): string[] {
+  try {
+    const crudo = localStorage.getItem(CLAVE_PLEGADOS)
+    return crudo ? (JSON.parse(crudo) as string[]) : []
+  } catch {
+    // Ventana privada, almacenamiento bloqueado, JSON corrupto. Nada de esto
+    // debe impedir que se pinte el menú.
+    return []
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Alternador rápido de modo
@@ -115,8 +88,25 @@ function AlternadorModo() {
 // Barra lateral
 // -----------------------------------------------------------------------------
 function Lateral({ onNavegar }: { onNavegar?: () => void }) {
-  const { puede, perfil, rol, vicerrectoria, salir } = useAuth()
+  const { perfil, rol, vicerrectoria, salir } = useAuth()
+  const { grupos } = useMenu()
+  const { pathname } = useLocation()
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const [plegados, setPlegados] = useState<string[]>(leerPlegados)
+
+  function alternarGrupo(codigo: string) {
+    setPlegados((prev) => {
+      const siguiente = prev.includes(codigo)
+        ? prev.filter((c) => c !== codigo)
+        : [...prev, codigo]
+      try {
+        localStorage.setItem(CLAVE_PLEGADOS, JSON.stringify(siguiente))
+      } catch {
+        // Se pierde la preferencia, no la navegación.
+      }
+      return siguiente
+    })
+  }
 
   return (
     <div className="flex h-full flex-col bg-surface">
@@ -125,21 +115,54 @@ function Lateral({ onNavegar }: { onNavegar?: () => void }) {
       </div>
 
       <nav aria-label="Navegación principal" className="flex-1 overflow-y-auto px-2.5 py-4">
-        {NAVEGACION.map((grupo) => {
-          const visibles = grupo.entradas.filter((e) => !e.permiso || puede(e.permiso))
-          if (visibles.length === 0) return null
+        {grupos.map((grupo) => {
+          // El grupo de la ruta activa se despliega aunque estuviera plegado:
+          // esconder dónde estás parado desorienta más de lo que ahorra.
+          const contieneActiva = grupo.entradas.some(
+            (e) => (e.exacta ? pathname === e.ruta : pathname.startsWith(e.ruta)),
+          )
+          const abierto = contieneActiva || !plegados.includes(grupo.codigo)
+          const idLista = `grupo-${grupo.codigo}`
 
           return (
-            <div key={grupo.titulo} className="mb-5 last:mb-0">
-              <h2 className="px-2.5 pb-1.5 text-overline uppercase text-fg-subtle">
-                {grupo.titulo}
+            <div key={grupo.codigo} className="mb-4 last:mb-0">
+              <h2>
+                <button
+                  type="button"
+                  onClick={() => alternarGrupo(grupo.codigo)}
+                  aria-expanded={abierto}
+                  aria-controls={idLista}
+                  className={cn(
+                    'flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5',
+                    'text-overline uppercase text-fg-subtle',
+                    'transition-colors duration-fast ease-out',
+                    '[@media(hover:hover)]:hover:bg-surface-muted [@media(hover:hover)]:hover:text-fg-muted',
+                  )}
+                >
+                  <ChevronDown
+                    aria-hidden
+                    data-motion="transform"
+                    className={cn(
+                      'size-3.5 shrink-0 transition-transform duration-fast ease-out',
+                      !abierto && '-rotate-90',
+                    )}
+                  />
+                  <span className="truncate">{grupo.titulo}</span>
+                  {/* Cuántas quedan escondidas: plegar no debe hacer creer que
+                      el grupo se vació. */}
+                  {!abierto && (
+                    <span className="ml-auto tabular text-fg-subtle">{grupo.entradas.length}</span>
+                  )}
+                </button>
               </h2>
-              <ul className="flex flex-col gap-0.5">
-                {visibles.map(({ a, etiqueta, icono: Icono, end }) => (
-                  <li key={a}>
+              <ul id={idLista} hidden={!abierto} className="flex flex-col gap-0.5 pt-0.5">
+                {grupo.entradas.map(({ codigo, ruta, etiqueta, icono, exacta }) => {
+                  const Icono = iconoDe(icono)
+                  return (
+                  <li key={codigo}>
                     <NavLink
-                      to={a}
-                      end={end}
+                      to={ruta}
+                      end={exacta}
                       onClick={onNavegar}
                       className={({ isActive }) =>
                         cn(
@@ -164,7 +187,8 @@ function Lateral({ onNavegar }: { onNavegar?: () => void }) {
                       )}
                     </NavLink>
                   </li>
-                ))}
+                  )
+                })}
               </ul>
             </div>
           )

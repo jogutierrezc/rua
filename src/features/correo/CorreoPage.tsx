@@ -12,7 +12,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { supabase, mensajeDeError } from '@/lib/supabase'
+import { obtenerBearerTokenSesion, supabase, mensajeDeError } from '@/lib/supabase'
 import { cn } from '@/lib/cn'
 import { fechaRelativa } from '@/lib/format'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -128,12 +128,22 @@ function Configuracion() {
   } = useQuery({
     queryKey: ['correo', 'diagnostico'],
     queryFn: async (): Promise<Diagnostico> => {
-      const { data, error } = await supabase.functions.invoke('probar-correo', {
-        body: {},
-        timeout: LIMITE_MS,
-      })
-      if (error) return { api_key: false, remitente: false, activo: false, inalcanzable: true }
-      return (data as { diagnostico: Diagnostico }).diagnostico
+      const token = await obtenerBearerTokenSesion()
+      if (!token) return { api_key: false, remitente: false, activo: false, inalcanzable: true }
+
+      try {
+        const { data, error } = await supabase.functions.invoke('probar-correo', {
+          headers: { Authorization: `Bearer ${token}` },
+          body: {},
+          timeout: LIMITE_MS,
+        })
+        if (error) {
+          return { api_key: false, remitente: false, activo: false, inalcanzable: true }
+        }
+        return (data as { diagnostico: Diagnostico }).diagnostico
+      } catch {
+        return { api_key: false, remitente: false, activo: false, inalcanzable: true }
+      }
     },
     retry: false,
   })
@@ -158,7 +168,13 @@ function Configuracion() {
 
   const enviarPrueba = useMutation({
     mutationFn: async () => {
+      const token = await obtenerBearerTokenSesion()
+      if (!token) {
+        throw new Error('Tu sesión expiró o no se pudo renovar. Vuelve a iniciar sesión.')
+      }
+
       const { data, error } = await supabase.functions.invoke('probar-correo', {
+        headers: { Authorization: `Bearer ${token}` },
         body: { destinatario: prueba.trim() },
         timeout: LIMITE_MS,
       })
@@ -724,7 +740,15 @@ function Bitacora() {
 
   const vaciarCola = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('enviar-correo', { body: {} })
+      const token = await obtenerBearerTokenSesion()
+      if (!token) {
+        throw new Error('Tu sesión expiró o no se pudo renovar. Vuelve a iniciar sesión.')
+      }
+
+      const { data, error } = await supabase.functions.invoke('enviar-correo', {
+        headers: { Authorization: `Bearer ${token}` },
+        body: {},
+      })
       if (error) throw new Error('No se pudo contactar con la función de envío.')
       return data as { enviados: number; fallidos: number; motivo?: string }
     },

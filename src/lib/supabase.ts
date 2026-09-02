@@ -18,6 +18,22 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   global: { headers: { 'x-application-name': 'rua' } },
 })
 
+/**
+ * Devuelve un access token actual para llamadas a Edge Functions.
+ *
+ * `getUser()` fuerza a Supabase a validar o renovar la sesión antes de usarla;
+ * luego `getSession()` devuelve el token ya actualizado para enviarlo de forma
+ * explícita en la petición. Así evitamos depender de un header viejo si la
+ * sesión quedó a medio refrescar en el navegador.
+ */
+export async function obtenerBearerTokenSesion(): Promise<string | null> {
+  const { data: usuario, error } = await supabase.auth.getUser()
+  if (error || !usuario.user) return null
+
+  const { data } = await supabase.auth.getSession()
+  return data.session?.access_token ?? null
+}
+
 /** Traduce los errores de PostgREST a algo que un usuario pueda leer. */
 export function mensajeDeError(error: unknown): string {
   if (!error) return 'Ocurrió un error inesperado.'

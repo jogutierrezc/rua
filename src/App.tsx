@@ -17,6 +17,7 @@ import { AparienciaPage } from '@/features/apariencia/AparienciaPage'
 import { PeriodosPage } from '@/features/periodos/PeriodosPage'
 import { FlujoPage } from '@/features/flujo/FlujoPage'
 import { CorreoPage } from '@/features/correo/CorreoPage'
+import { MenuPage } from '@/features/menu/MenuPage'
 import { TutorialPage } from '@/features/tutorial/TutorialPage'
 import { EmptyState } from '@/components/ui/primitives'
 import { LinkButton } from '@/components/ui/LinkButton'
@@ -140,6 +141,17 @@ export function App() {
             element={
               <RequierePermiso permiso="roles.administrar">
                 <CorreoPage />
+              </RequierePermiso>
+            }
+          />
+
+          {/* Reorganizar el menú es decidir qué se ofrece y cómo se llama, no
+              quién puede entrar: va con el permiso de administración. */}
+          <Route
+            path="menu"
+            element={
+              <RequierePermiso permiso="roles.administrar">
+                <MenuPage />
               </RequierePermiso>
             }
           />

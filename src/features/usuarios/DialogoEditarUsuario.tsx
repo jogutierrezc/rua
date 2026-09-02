@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertCircle, Info, KeyRound, Save, ShieldAlert, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { supabase, mensajeDeError } from '@/lib/supabase'
+import { obtenerBearerTokenSesion, supabase, mensajeDeError } from '@/lib/supabase'
 import { cn } from '@/lib/cn'
 import { fechaRelativa } from '@/lib/format'
 import { Button } from '@/components/ui/Button'
@@ -127,7 +127,13 @@ export function DialogoEditarUsuario({
   // ---------------------------------------------------------------------------
   const restablecer = useMutation({
     mutationFn: async () => {
+      const token = await obtenerBearerTokenSesion()
+      if (!token) {
+        throw new Error('Tu sesión expiró o no se pudo renovar. Vuelve a iniciar sesión.')
+      }
+
       const { error } = await supabase.functions.invoke('restablecer-contrasena', {
+        headers: { Authorization: `Bearer ${token}` },
         body: { usuario_id: usuario.id, contrasena: nuevaClave },
       })
 
