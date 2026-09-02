@@ -128,11 +128,24 @@ export function DialogoSolicitud({
   // sería la peor sorpresa posible, así que el aviso es explícito.
   const materializa = etapaVigente?.materializa ?? false
 
-  // Puedo firmar si: hay etapa vigente, tengo SU permiso concreto, y no es mía.
+  // Puedo responder si: hay etapa esperando, tengo SU permiso concreto, y no
+  // es mía. Es la misma condición que comprueba `fn_decidir_etapa` en la base;
+  // aquí sólo decide qué se enseña.
   const puedoFirmar =
     Boolean(etapaVigente) &&
     puede(etapaVigente!.permiso_codigo) &&
     s?.solicitante_id !== perfil?.id
+
+  /**
+   * Las etapas que ya conceptué yo.
+   *
+   * Emitido el concepto, la acción se apaga hasta que la cadena llegue —si
+   * llega— a otra etapa que también me toque. La base ya lo impide; lo que
+   * faltaba era DECIRLO, en vez de dejar un botón que fallaría al pulsarlo.
+   */
+  const misEtapas = (data?.etapas ?? []).filter(
+    (e) => e.revisor_id === perfil?.id && (e.estado === 'aprobada' || e.estado === 'denegada'),
+  )
 
   const largo = justificacion.trim().length
   const suficiente = largo >= MIN_JUSTIFICACION
@@ -523,10 +536,23 @@ export function DialogoSolicitud({
             ) : !puedoFirmar ? (
               <p className="flex items-start gap-2 text-body-sm text-fg-muted">
                 <ShieldAlert aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-subtle" />
-                {s.solicitante_id === perfil?.id
-                  ? 'No puedes validar tu propia solicitud. Está en manos de ' +
-                    `${etapaVigente.etapa_nombre}.`
-                  : `Esta solicitud espera la firma de ${etapaVigente.etapa_nombre}, y tu rol no tiene ese permiso.`}
+                {s.solicitante_id === perfil?.id ? (
+                  <span>
+                    No puedes validar tu propia solicitud. Está en manos de{' '}
+                    {etapaVigente.etapa_nombre}.
+                  </span>
+                ) : misEtapas.length > 0 ? (
+                  <span>
+                    Ya emitiste tu concepto en {misEtapas.map((e) => e.etapa_nombre).join(', ')}.
+                    El expediente está ahora en manos de {etapaVigente.etapa_nombre}; tu acción
+                    vuelve a activarse sólo si la cadena llega a otra etapa que te corresponda.
+                  </span>
+                ) : (
+                  <span>
+                    Este expediente espera el concepto de {etapaVigente.etapa_nombre}, y tu rol no
+                    tiene ese permiso.
+                  </span>
+                )}
               </p>
             ) : (
               <div className="flex flex-col gap-3">
@@ -536,7 +562,7 @@ export function DialogoSolicitud({
                     className="flex flex-wrap items-baseline justify-between gap-2 text-label text-fg"
                   >
                     <span>
-                      Justificación de {etapaVigente.etapa_nombre}
+                      Concepto de {etapaVigente.etapa_nombre}
                       <span aria-hidden className="ml-0.5 text-danger">
                         *
                       </span>
@@ -557,7 +583,7 @@ export function DialogoSolicitud({
                     id="justificacion-decision"
                     rows={3}
                     className="mt-1.5"
-                    placeholder="Explica por qué apruebas o deniegas. Queda en el expediente y lo verá el solicitante."
+                    placeholder="Fundamenta el concepto aprobatorio o de rechazo. Queda en el expediente y lo verá el solicitante."
                     value={justificacion}
                     onChange={(e) => setJustificacion(e.target.value)}
                   />
@@ -624,20 +650,20 @@ export function DialogoSolicitud({
                     <Button
                       variante="peligro"
                       disabled={!suficiente}
-                      title={suficiente ? undefined : 'Escribe la justificación primero'}
+                      title={suficiente ? undefined : 'Escribe el concepto primero'}
                       onClick={() => setConfirmando('denegar')}
                       iconoIzq={<X className="size-4" />}
                     >
-                      Denegar
+                      Rechazar
                     </Button>
                     <Button
                       variante="primario"
                       disabled={!suficiente}
-                      title={suficiente ? undefined : 'Escribe la justificación primero'}
+                      title={suficiente ? undefined : 'Escribe el concepto primero'}
                       onClick={() => setConfirmando('aprobar')}
                       iconoIzq={<Check className="size-4" />}
                     >
-                      {materializa ? 'Aprobar y crear' : 'Aprobar etapa'}
+                      {materializa ? 'Aprobar y crear' : 'Aprobar'}
                     </Button>
                   </div>
                 )}

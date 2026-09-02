@@ -206,6 +206,19 @@ export type SolicitudDetalleRow = {
   periodo_codigo: string | null
   resuelto_por: string | null
   resuelto_por_nombre: string | null
+
+  /**
+   * La etapa que está esperando concepto, si el expediente sigue en curso.
+   *
+   * Con esto la bandeja distingue las tres situaciones que antes se veían
+   * iguales: me toca responder, ya respondí, o no es mi turno.
+   */
+  etapa_vigente_codigo: string | null
+  etapa_vigente_nombre: string | null
+  etapa_vigente_permiso: CodigoPermiso | null
+  /** Ya emití mi concepto en alguna etapa de este expediente. */
+  ya_respondi: boolean
+  total_actividades: number
 }
 
 export type EtapaFlujoRow = {

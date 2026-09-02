@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Eye, Filter, Plus, Search, Activity } from 'lucide-react'
+import { Check, Eye, Filter, Hourglass, Plus, Search, Activity } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { fechaRelativa } from '@/lib/format'
 import { ESTADO_SOLICITUD, PRIORIDAD, TIPO_SOLICITUD } from '@/lib/estados'
@@ -208,9 +208,18 @@ export function SolicitudesPage() {
                   const abierta = expandida === s.id
                   const esMia = s.solicitante_id === perfil?.id
                   const enCurso = s.estado === 'pendiente' || s.estado === 'revision'
-                  // Quién puede firmar de verdad lo decide la etapa vigente,
-                  // dentro del diálogo. Aquí sólo se elige el énfasis del botón.
-                  const revisable = enCurso && !esMia && puede('solicitudes.revisar')
+
+                  // Tres situaciones distintas, tres botones distintos. Antes
+                  // las tres caían en un «Ver» genérico y quien tenía que
+                  // responder no sabía que le tocaba a él.
+                  const meToca =
+                    enCurso &&
+                    !esMia &&
+                    Boolean(s.etapa_vigente_permiso) &&
+                    puede(s.etapa_vigente_permiso!)
+                  // Ya conceptué y la cadena avanzó: mi acción queda apagada
+                  // hasta que —si vuelve a tocarme— llegue otra etapa mía.
+                  const yaConceptue = enCurso && !esMia && !meToca && s.ya_respondi
 
                   return (
                     <Tr
@@ -303,15 +312,53 @@ export function SolicitudesPage() {
                             >
                               Seguimiento
                             </Button>
-                          ) : (
+                          ) : meToca ? (
                             <Button
                               tamano="sm"
-                              variante={revisable ? 'primario' : 'fantasma'}
-                              aria-label={`Abrir el expediente ${s.folio}`}
+                              variante="primario"
+                              aria-label={`Responder al expediente ${s.folio}`}
                               onClick={() => setAbierta(s.id)}
                               iconoIzq={<Eye className="size-3.5" />}
                             >
-                              {revisable ? 'Revisar' : 'Ver'}
+                              Responder
+                            </Button>
+                          ) : yaConceptue ? (
+                            // Se abre igual: consultar lo que uno mismo
+                            // conceptuó no es una acción, es un derecho.
+                            <Button
+                              tamano="sm"
+                              variante="sutil"
+                              aria-label={`Ver tu concepto en el expediente ${s.folio}`}
+                              title={
+                                s.etapa_vigente_nombre
+                                  ? `Ya emitiste tu concepto. Ahora está en manos de ${s.etapa_vigente_nombre}.`
+                                  : 'Ya emitiste tu concepto.'
+                              }
+                              onClick={() => setAbierta(s.id)}
+                              iconoIzq={<Check className="size-3.5" />}
+                            >
+                              Concepto emitido
+                            </Button>
+                          ) : (
+                            <Button
+                              tamano="sm"
+                              variante="fantasma"
+                              aria-label={`Abrir el expediente ${s.folio}`}
+                              title={
+                                enCurso && s.etapa_vigente_nombre
+                                  ? `Esperando el concepto de ${s.etapa_vigente_nombre}.`
+                                  : undefined
+                              }
+                              onClick={() => setAbierta(s.id)}
+                              iconoIzq={
+                                enCurso ? (
+                                  <Hourglass className="size-3.5" />
+                                ) : (
+                                  <Eye className="size-3.5" />
+                                )
+                              }
+                            >
+                              Ver
                             </Button>
                           )}
                         </div>
