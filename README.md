@@ -317,12 +317,13 @@ npx supabase functions deploy enviar-correo
 npx supabase functions deploy probar-correo
 ```
 
-Cada función es autocontenida: `enviar-correo` y `probar-correo` llevan su
-propia copia de `correo.ts` en lugar de compartir una carpeta común. Es
-duplicación a propósito — el despliegue desde el panel de Supabase sube sólo la
-carpeta de la función, y un import a una carpeta hermana rompe el empaquetado
-con «Module not found». Al cambiar `correo.ts` hay que copiarlo a la otra
-función.
+Cada función es **un solo archivo**, sin carpeta compartida ni imports
+relativos: sólo `index.ts` con su dependencia remota. Es duplicación a
+propósito. El despliegue desde el panel de Supabase sube un archivo por
+función, y un import a cualquier otro archivo del proyecto deja la función sin
+arrancar — y no falla de forma visible: deja de responder, que se diagnostica
+mucho peor que un error. `enviar-correo` y `probar-correo` comparten un bloque
+idéntico de maquetación y envío; al tocar uno hay que copiarlo al otro.
 
 También hay que configurar el dominio desplegado en Supabase Authentication →
 URL Configuration para que los enlaces de recuperación no apunten a
