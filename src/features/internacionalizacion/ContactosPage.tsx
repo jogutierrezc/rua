@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   Briefcase,
   Download,
+  FileDown,
   GraduationCap,
   MailCheck,
   Plus,
@@ -35,6 +36,7 @@ import {
 import { useAuth } from '@/features/auth/AuthProvider'
 import { DialogoContacto } from './DialogoContacto'
 import { DialogoExportar } from './DialogoExportar'
+import { DialogoPlantillas } from './DialogoPlantillas'
 import { DialogoDetalleContacto } from './DialogoDetalleContacto'
 import { useCatalogo, usePaises, paisesPorRegion } from './useCatalogos'
 import { useVerificacion } from './useVerificacion'
@@ -161,6 +163,7 @@ export function ContactosPage() {
   const [editando, setEditando] = useState<ContactoDetalleRow | null>(null)
   const [creando, setCreando] = useState(false)
   const [exportando, setExportando] = useState(false)
+  const [viendoPlantillas, setViendoPlantillas] = useState(false)
 
   const { data: paises } = usePaises()
   const { data: roles } = useCatalogo('rol')
@@ -304,6 +307,12 @@ export function ContactosPage() {
         descripcion="A quién conoce la Universidad fuera: quién es, de qué plantilla vino y si su correo sigue sirviendo."
         acciones={
           <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => setViendoPlantillas(true)}
+              iconoIzq={<FileDown className="size-4" />}
+            >
+              Plantillas
+            </Button>
             <Button onClick={() => setExportando(true)} iconoIzq={<Download className="size-4" />}>
               Exportar
             </Button>
@@ -670,6 +679,8 @@ export function ContactosPage() {
           }
         />
       )}
+
+      {viendoPlantillas && <DialogoPlantillas onCerrar={() => setViendoPlantillas(false)} />}
 
       {exportando && (
         <DialogoExportar

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  ArrowRight,
   Briefcase,
   Building2,
   Check,
@@ -754,6 +755,216 @@ export function MaquetaVerificacion() {
             <p className="mt-1 text-body-sm text-fg-subtle">{v.mensaje}</p>
           </li>
         ))}
+      </ul>
+    </Ventana>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Compartir · la ficha mínima
+//
+// Qué datos hacen falta para reportar UN contacto sin plantilla ninguna. Se
+// distingue lo obligatorio de lo que ayuda, porque la duda de quien va a
+// escribir el correo es exactamente ésa: «¿y si no sé el teléfono?».
+// -----------------------------------------------------------------------------
+const FICHA_MINIMA: { campo: string; ejemplo: string; obligatorio: boolean }[] = [
+  { campo: 'Nombre y apellidos', ejemplo: 'María Fernanda Ruiz Gómez', obligatorio: true },
+  { campo: 'Cargo', ejemplo: 'Directora de Relaciones Internacionales', obligatorio: true },
+  { campo: 'Correo', ejemplo: 'mf.ruiz@universidad.mx', obligatorio: true },
+  { campo: 'País', ejemplo: 'México', obligatorio: false },
+  { campo: 'Institución o empresa', ejemplo: 'Universidad Nacional Autónoma de México', obligatorio: false },
+  { campo: 'De dónde salió', ejemplo: 'Congreso de Ingeniería, mayo 2026', obligatorio: false },
+]
+
+export function MaquetaFichaMinima() {
+  return (
+    <Ventana titulo="Un contacto suelto · lo mínimo que hace falta">
+      <ul className="flex flex-col gap-2">
+        {FICHA_MINIMA.map((f) => (
+          <li key={f.campo} className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="flex w-44 shrink-0 items-center gap-1.5">
+              <span className="text-body-sm text-fg">{f.campo}</span>
+              {f.obligatorio ? (
+                <span aria-label="obligatorio" className="text-danger">
+                  *
+                </span>
+              ) : null}
+            </span>
+            <span className="min-w-0 flex-1 truncate rounded border border-line bg-surface px-2 py-1 text-body-sm text-fg-muted">
+              {f.ejemplo}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-3 border-t border-line pt-2.5 text-body-sm text-fg-subtle">
+        <span className="text-danger">*</span> Sin estos tres no se puede guardar el contacto. Lo
+        demás se completa después.
+      </p>
+    </Ventana>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Compartir · la hoja rellena
+//
+// Se dibuja con aspecto de hoja de cálculo —letras de columna, celda activa— y
+// no de tabla del portal, porque eso es lo que quien lee va a tener delante
+// cuando la rellene.
+// -----------------------------------------------------------------------------
+const COLUMNAS_HOJA = ['First Name', 'Last Name', 'Position', 'Company Name', 'Email']
+
+const FILAS_HOJA = [
+  ['Laura', 'Restrepo Díaz', 'Gerente de Talento Humano', 'Tecnologías Andinas', 'l.restrepo@tecandinas.com'],
+  ['Peter', 'Novak', 'Head of Recruitment', 'Nordic Systems AB', 'p.novak@nordicsys.se'],
+  ['Amina', 'Okoro', 'Operations Director', 'Lagos Logistics Ltd', 'a.okoro@lagoslog.ng'],
+]
+
+export function MaquetaHojaRellena() {
+  return (
+    <Ventana titulo="employer_template_2024_V1.xlsx · Excel">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[34rem] border-collapse text-left">
+          <thead>
+            <tr>
+              <th className="w-7 border border-line bg-sunken px-1 py-1 text-center text-[10px] text-fg-subtle">
+                {' '}
+              </th>
+              {COLUMNAS_HOJA.map((c, i) => (
+                <th
+                  key={c}
+                  className="border border-line bg-sunken px-2 py-1 text-[10px] font-normal text-fg-subtle"
+                >
+                  {String.fromCharCode(65 + i)}
+                </th>
+              ))}
+              <th className="w-10 border border-line bg-sunken px-1 py-1 text-center text-[10px] text-fg-subtle">
+                …
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border border-line bg-sunken px-1 py-1 text-center text-[10px] text-fg-subtle">
+                1
+              </td>
+              {COLUMNAS_HOJA.map((c) => (
+                <td
+                  key={c}
+                  className="whitespace-nowrap border border-line bg-primary-soft px-2 py-1 font-mono text-[11px] font-semibold text-primary-softFg"
+                >
+                  {c}
+                </td>
+              ))}
+              <td className="border border-line bg-primary-soft px-1 py-1 text-center text-[11px] text-primary-softFg">
+                …
+              </td>
+            </tr>
+
+            {FILAS_HOJA.map((fila, f) => (
+              <tr key={fila[4]}>
+                <td className="border border-line bg-sunken px-1 py-1 text-center text-[10px] text-fg-subtle">
+                  {f + 2}
+                </td>
+                {fila.map((celda, c) => (
+                  <td
+                    key={celda}
+                    className={cn(
+                      'max-w-[10rem] truncate border px-2 py-1 text-[11px]',
+                      // Una celda en edición: es lo que hace que se lea como una
+                      // hoja de cálculo y no como una tabla ya terminada.
+                      f === 2 && c === 2
+                        ? 'border-primary bg-surface text-fg ring-1 ring-focus/40'
+                        : 'border-line bg-surface text-fg-muted',
+                    )}
+                  >
+                    {celda}
+                  </td>
+                ))}
+                <td className="border border-line bg-surface px-1 py-1 text-center text-[11px] text-fg-subtle">
+                  …
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mt-3 text-body-sm text-fg-subtle">
+        Añade una fila por contacto, debajo de la cabecera. Las columnas que no sepas se dejan en
+        blanco: sólo el nombre, el cargo y el correo son imprescindibles.
+      </p>
+    </Ventana>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Compartir · corregir lo que ya está
+//
+// El «antes y después» es la única forma de explicar esto sin ambigüedad: qué
+// campo manda la hoja nueva, cuál se conserva y por qué una celda vacía no borra.
+// -----------------------------------------------------------------------------
+const CAMBIOS: { campo: string; antes: string; despues: string; nota: string }[] = [
+  {
+    campo: 'Cargo',
+    antes: 'Coordinadora de Convenios',
+    despues: 'Directora de Relaciones Internacionales',
+    nota: 'lo manda la hoja nueva',
+  },
+  {
+    campo: 'Company Name',
+    antes: 'Universidad del Norte',
+    despues: 'Universidad del Norte',
+    nota: 'la celda venía vacía: se conserva',
+  },
+  {
+    campo: 'Teléfono',
+    antes: '+52 55 1234 5678',
+    despues: '+52 55 1234 5678',
+    nota: 'la celda venía vacía: se conserva',
+  },
+]
+
+export function MaquetaActualizar() {
+  return (
+    <Ventana titulo="Mismo correo · el contacto se actualiza, no se duplica">
+      <p className="flex flex-wrap items-center gap-2 rounded-md bg-surface-muted px-2.5 py-2">
+        <span className="text-body-sm text-fg-subtle">La llave:</span>
+        <span className="font-mono text-[11px] text-fg">mf.ruiz@universidad.mx</span>
+        <Sello tono="primario">Actualizar</Sello>
+      </p>
+
+      <ul className="mt-3 flex flex-col gap-2">
+        {CAMBIOS.map((c) => {
+          const cambia = c.antes !== c.despues
+          return (
+            <li key={c.campo} className="rounded-md border border-line bg-surface p-2.5">
+              <p className="text-body-sm text-fg">{c.campo}</p>
+              <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span
+                  className={cn(
+                    'truncate rounded px-1.5 py-0.5',
+                    cambia
+                      ? 'bg-danger-soft text-danger-softFg line-through'
+                      : 'bg-surface-muted text-fg-subtle',
+                  )}
+                >
+                  {c.antes}
+                </span>
+                <ArrowRight aria-hidden className="size-3 shrink-0 text-fg-subtle" />
+                <span
+                  className={cn(
+                    'truncate rounded px-1.5 py-0.5',
+                    cambia ? 'bg-success-soft text-success-softFg' : 'bg-surface-muted text-fg-muted',
+                  )}
+                >
+                  {c.despues}
+                </span>
+              </p>
+              <p className="mt-1 text-body-sm text-fg-subtle">{c.nota}</p>
+            </li>
+          )
+        })}
       </ul>
     </Ventana>
   )

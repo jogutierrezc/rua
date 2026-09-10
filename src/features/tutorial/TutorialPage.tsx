@@ -20,7 +20,10 @@ import { Card } from '@/components/ui/primitives'
 import { Revelar } from './Revelar'
 import {
   DiagramaFlujo,
+  MaquetaActualizar,
   MaquetaClasificacion,
+  MaquetaFichaMinima,
+  MaquetaHojaRellena,
   MaquetaJustificacion,
   MaquetaPlantillas,
   MaquetaPrevisualizacion,
@@ -40,6 +43,7 @@ const SECCIONES = [
   { id: 'flujo', titulo: 'El flujo de aprobación' },
   { id: 'seguimiento', titulo: 'Rua Tracker' },
   { id: 'rankings', titulo: 'Rankings internacionales' },
+  { id: 'compartir', titulo: '¿Cómo comparto contactos?' },
   { id: 'axioma', titulo: 'Axioma AI' },
 ] as const
 
@@ -607,6 +611,95 @@ export function TutorialPage() {
           </Seccion>
 
           {/* =========================== Axioma ========================== */}
+          {/* =========================== Compartir contactos ============= */}
+          <Seccion
+            id="compartir"
+            sobretitulo="Para todos, no sólo para Internacionalización"
+            titulo="¿Cómo comparto mis contactos?"
+          >
+            <Parrafo>
+              Cargar contactos en la libreta lo hacen dos roles: el administrador y la oficina de
+              Internacionalización. <Fuerte>Aportarlos lo hace cualquiera.</Fuerte> Un decano que
+              vuelve de un congreso, una facultad con convenios activos, la oficina de egresados
+              con sus empleadores: ahí están los contactos que la Universidad todavía no tiene
+              registrados, y esta sección explica cómo hacerlos llegar.
+            </Parrafo>
+
+            <Parrafo>
+              La separación es a propósito. La libreta es el archivo que la Universidad entrega a
+              los rankings, así que tiene <Fuerte>una sola puerta de entrada</Fuerte> y alguien
+              responsable de ella. Pero eso no puede convertirse en una excusa para perder
+              contactos, y por eso reportarlos es tan simple como esto.
+            </Parrafo>
+
+            <Paso
+              n={1}
+              titulo="¿Tienes uno o dos? Mándalos escritos"
+              pistas={[
+                'Para un puñado de contactos no hace falta plantilla ninguna: basta un correo a la oficina de Internacionalización con estos datos.',
+                'Sólo tres son imprescindibles — nombre y apellidos, cargo y correo —, porque son los que impiden guardar la ficha si faltan. El país, la institución y lo demás se completan después.',
+                'Di siempre de dónde salió el contacto. Meses más tarde, cuando nadie recuerde quién lo propuso, esa línea es lo único que permite rendir cuentas de la lista.',
+              ]}
+            >
+              <MaquetaFichaMinima />
+            </Paso>
+
+            <Paso
+              n={2}
+              titulo="¿Tienes una lista? Usa la plantilla"
+              pistas={[
+                'Descárgala desde Internacionalización → Contactos → Plantillas. Ese botón lo ve cualquiera que pueda consultar la libreta: bajar un archivo en blanco no es escribir en ella.',
+                'Elige la que corresponda: la académica para docentes e investigadores de otras instituciones, la de empleadores para empresas que contratan egresados. No se mezclan.',
+                'Rellénala en Excel, una fila por contacto, debajo de la cabecera. No cambies los nombres de las columnas ni su orden: así es como la espera quien la recibe.',
+                'Cuando la tengas lista, envíasela a Internacionalización. Una lista de ocho contactos sirve igual que una de ochocientas.',
+              ]}
+            >
+              <MaquetaHojaRellena />
+            </Paso>
+
+            <Paso
+              n={3}
+              titulo="¿Ya estaba y hay que corregirlo? Manda el mismo correo"
+              pistas={[
+                'El correo es la llave. Si mandas una fila con un correo que ya está en la libreta, el contacto NO se duplica: se actualiza con lo que traiga tu hoja.',
+                'Una celda vacía significa «no lo sé», nunca «bórralo». Si sólo sabes el cargo nuevo, rellena el nombre, el correo y el cargo, y deja el resto en blanco: lo que ya estaba guardado se conserva.',
+                'La única excepción es el correo mismo. Si a alguien le cambió la dirección, mandar la nueva crea un contacto aparte — dilo en el mensaje para que Internacionalización una las dos fichas.',
+              ]}
+            >
+              <MaquetaActualizar />
+            </Paso>
+
+            <Revelar>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  [
+                    'No te preocupes por la ortografía del sector',
+                    'Si escribes «Banking» y el portal no lo conoce, se añade solo. Si escribes «Bankng», se entiende como el que ya estaba. Y «EDUCACIÓN SUPERIOR», «Educación Superior» y «educacion superior» son el mismo sector, no tres.',
+                  ],
+                  [
+                    'Ni por mandar algo repetido',
+                    'Si dos personas reportan al mismo contacto, no se duplica: es el mismo correo, así que es la misma ficha. Repetir un contacto no rompe nada — omitirlo por si acaso, sí.',
+                  ],
+                  [
+                    'Nada entra sin revisarse',
+                    'Antes de escribir una sola fila, quien carga ve exactamente qué se va a crear, qué se va a actualizar y qué tiene errores. Si algo de tu hoja está mal, se ve antes y te lo pueden preguntar.',
+                  ],
+                  [
+                    'Y puedes consultar lo que ya hay',
+                    'La libreta la ve todo el mundo desde Internacionalización → Contactos. Antes de reunir una lista, míralo: quizá la mitad ya está, y así te centras en lo que falta.',
+                  ],
+                ].map(([titulo, texto], i) => (
+                  <Revelar key={titulo} retraso={i * 70}>
+                    <div className="h-full rounded-lg border border-line bg-surface p-4">
+                      <p className="text-body font-medium text-fg">{titulo}</p>
+                      <p className="mt-1.5 text-body-sm leading-relaxed text-fg-muted">{texto}</p>
+                    </div>
+                  </Revelar>
+                ))}
+              </div>
+            </Revelar>
+          </Seccion>
+
           <Seccion id="axioma" sobretitulo="Lo que viene" titulo="Axioma AI">
             <Revelar>
               <div className="relative overflow-hidden rounded-xl border border-line bg-surface p-6 sm:p-8">

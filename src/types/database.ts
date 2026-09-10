@@ -897,6 +897,15 @@ export interface Database {
         }
         Returns: FilaContactoValidada[]
       }
+      /**
+       * Resuelve un valor del catálogo o lo crea si no existe ni se parece a
+       * ninguno. Es lo que permite escribir un sector nuevo a mano sin tener que
+       * ir antes a la pantalla del catálogo.
+       */
+      fn_asegurar_catalogo: {
+        Args: { p_tipo: TipoCatalogoContacto; p_texto: string }
+        Returns: string | null
+      }
       fn_importar_contactos: {
         Args: {
           p_filas: Record<string, string>[]

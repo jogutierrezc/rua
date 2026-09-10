@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { RutaProtegida, RutaPublica, RequierePermiso } from '@/features/auth/guards'
@@ -29,16 +30,38 @@ import { ContactosPage } from '@/features/internacionalizacion/ContactosPage'
 import { ImportarContactosPage } from '@/features/internacionalizacion/ImportarContactosPage'
 import { VerificacionPage } from '@/features/internacionalizacion/VerificacionPage'
 import { CatalogosPage } from '@/features/internacionalizacion/CatalogosPage'
-import { TutorialPage } from '@/features/tutorial/TutorialPage'
 import { EmptyState } from '@/components/ui/primitives'
 import { LinkButton } from '@/components/ui/LinkButton'
+
+/**
+ * El tutorial se carga aparte.
+ *
+ * Es una página larga —tres juegos de maquetas dibujadas— que la mayoría de las
+ * sesiones no abre nunca: quien entra a trabajar va a Solicitudes, no al
+ * recorrido de bienvenida. Manteniéndola en el paquete principal, todo el mundo
+ * pagaba su peso en cada carga del portal para no verla.
+ *
+ * Sin pantalla de espera visible: llega en un parpadeo desde el mismo servidor
+ * que sirvió la página, y un destello de medio segundo molesta más que un lienzo
+ * tranquilo. Es el mismo criterio que usan las guardas de ruta.
+ */
+const TutorialPage = lazy(() =>
+  import('@/features/tutorial/TutorialPage').then((m) => ({ default: m.TutorialPage })),
+)
 
 export function App() {
   return (
     <Routes>
       {/* Abierto a todo el mundo, con sesión o sin ella: es material de
           divulgación, y quien ya entró también querrá consultarlo. */}
-      <Route path="/tutorial" element={<TutorialPage />} />
+      <Route
+        path="/tutorial"
+        element={
+          <Suspense fallback={<div className="min-h-dvh bg-canvas" />}>
+            <TutorialPage />
+          </Suspense>
+        }
+      />
 
       <Route element={<RutaPublica />}>
         <Route path="/entrar" element={<LoginPage />} />
