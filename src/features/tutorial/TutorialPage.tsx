@@ -11,6 +11,7 @@ import {
   Network,
   Sprout,
   Target,
+  Users2,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Marca } from '@/components/layout/Marca'
@@ -21,20 +22,24 @@ import {
   DiagramaFlujo,
   MaquetaClasificacion,
   MaquetaJustificacion,
+  MaquetaPlantillas,
+  MaquetaPrevisualizacion,
   MaquetaPropuesta,
   MaquetaRevision,
   MaquetaTracker,
+  MaquetaVerificacion,
   Pista,
   TablaOficinas,
 } from './maquetas'
 
 const SECCIONES = [
   { id: 'iniciativa', titulo: 'La iniciativa' },
-  { id: 'nombre', titulo: 'Por qué RUA' },
-  { id: 'oficinas', titulo: 'Quién hace qué' },
-  { id: 'solicitud', titulo: 'Cómo se solicita' },
+  { id: 'nombre', titulo: '¿Por qué RUA?' },
+  { id: 'oficinas', titulo: '¿Quién hace qué?' },
+  { id: 'solicitud', titulo: '¿Cómo se solicita?' },
   { id: 'flujo', titulo: 'El flujo de aprobación' },
   { id: 'seguimiento', titulo: 'Rua Tracker' },
+  { id: 'rankings', titulo: 'Rankings internacionales' },
   { id: 'axioma', titulo: 'Axioma AI' },
 ] as const
 
@@ -121,8 +126,8 @@ export function TutorialPage() {
           <Revelar retraso={160}>
             <p className="mt-5 max-w-2xl text-pretty text-body-lg leading-relaxed text-white/70">
               Un solo lugar para registrar, validar y medir las actividades de todas las
-              facultades y dependencias. Este recorrido explica cómo funciona y, sobre todo,
-              cómo se presenta una solicitud.
+              facultades y dependencias. Este recorrido explica cómo funciona, cómo se presenta
+              una solicitud y cómo se reportan los contactos para los rankings internacionales.
             </p>
           </Revelar>
 
@@ -148,7 +153,18 @@ export function TutorialPage() {
                 )}
                 data-motion="transform"
               >
-                Por qué se llama RUA
+                ¿Por qué se llama RUA?
+              </a>
+              <a
+                href="#rankings"
+                className={cn(
+                  'inline-flex h-11 items-center rounded-md border border-white/25 px-5 text-label text-white',
+                  'transition-[background-color,transform] duration-press ease-out',
+                  'hover:bg-white/10 active:scale-[0.97]',
+                )}
+                data-motion="transform"
+              >
+                Reportar contactos
               </a>
             </div>
           </Revelar>
@@ -185,7 +201,7 @@ export function TutorialPage() {
           <Seccion
             id="iniciativa"
             sobretitulo="La iniciativa"
-            titulo="Por qué existe esta herramienta"
+            titulo="¿Por qué existe esta herramienta?"
           >
             <Parrafo>
               Desde la Oficina de Inteligencia de Negocios tomamos la iniciativa de construir
@@ -228,7 +244,7 @@ export function TutorialPage() {
           </Seccion>
 
           {/* =========================== Por qué RUA ===================== */}
-          <Seccion id="nombre" sobretitulo="El nombre" titulo="Por qué RUA">
+          <Seccion id="nombre" sobretitulo="El nombre" titulo="¿Por qué RUA?">
             <Parrafo>
               El nombre funciona en dos planos, y los dos importan.
             </Parrafo>
@@ -325,7 +341,7 @@ export function TutorialPage() {
           <Seccion
             id="oficinas"
             sobretitulo="Los participantes"
-            titulo="Quién hace qué"
+            titulo="¿Quién hace qué?"
           >
             <Parrafo>
               RUA no reparte el trabajo por jerarquía sino por <Fuerte>función</Fuerte>. Cada
@@ -348,7 +364,7 @@ export function TutorialPage() {
           <Seccion
             id="solicitud"
             sobretitulo="Lo esencial"
-            titulo="Cómo se presenta una solicitud"
+            titulo="¿Cómo se presenta una solicitud?"
           >
             <Parrafo>
               Son tres pasos en una sola pantalla, en{' '}
@@ -406,7 +422,7 @@ export function TutorialPage() {
           {/* =========================== El flujo ======================== */}
           <Seccion
             id="flujo"
-            sobretitulo="Qué pasa después"
+            sobretitulo="¿Qué pasa después?"
             titulo="El flujo de aprobación"
           >
             <Parrafo>
@@ -478,6 +494,116 @@ export function TutorialPage() {
                 </Revelar>
               ))}
             </div>
+          </Seccion>
+
+          {/* =========================== Rankings ======================== */}
+          <Seccion
+            id="rankings"
+            sobretitulo="Internacionalización"
+            titulo="¿Cómo se reportan los contactos?"
+          >
+            <Parrafo>
+              Los rankings internacionales no se calculan solos: buena parte de la posición de una
+              universidad sale de <Fuerte>encuestas de reputación</Fuerte>. Quienes las responden
+              son académicos de otras instituciones y empleadores que contratan egresados, y cada
+              universidad propone a quién preguntar. Esa propuesta se llama{' '}
+              <Fuerte>nominación</Fuerte>, y es exactamente lo que se prepara aquí.
+            </Parrafo>
+
+            <Parrafo>
+              De ahí que el módulo tenga la forma que tiene. No es una agenda de contactos: es el
+              archivo que la Universidad entrega, y por eso importa tanto que los correos{' '}
+              <Fuerte>sirvan de verdad</Fuerte>. Una lista de mil direcciones de las que responden
+              cuarenta vale menos que una de cien que llegan todas.
+            </Parrafo>
+
+            <Revelar>
+              <Card className="flex items-start gap-3 border-primary/25 bg-primary-soft p-4">
+                <Users2 aria-hidden className="mt-0.5 size-4 shrink-0 text-primary-softFg" />
+                <p className="text-body-sm leading-relaxed text-primary-softFg">
+                  <Fuerte>Cualquier dependencia puede aportar contactos.</Fuerte> Un decano que
+                  volvió de un congreso, una facultad con convenios activos, la oficina de
+                  egresados con sus empleadores: todos tienen contactos que la Universidad no
+                  tiene registrados. Se envían a la oficina de Internacionalización, que es quien
+                  los carga y los mantiene.
+                </p>
+              </Card>
+            </Revelar>
+
+            <Paso
+              n={1}
+              titulo="Descarga la plantilla que te toca"
+              pistas={[
+                'Hay dos, y no se mezclan: la académica es para docentes e investigadores de instituciones socias; la de empleadores, para empresas y organizaciones que contratan egresados.',
+                'La primera hoja del archivo es la plantilla tal cual, con sus columnas en inglés y en su orden original. No cambies los nombres ni el orden: así es como la espera quien la recibe.',
+                'La segunda hoja son las instrucciones, con un ejemplo por columna. Está aparte para que no haya que borrarla antes de entregar el archivo.',
+              ]}
+            >
+              <MaquetaPlantillas />
+            </Paso>
+
+            <Paso
+              n={2}
+              titulo="Rellénala y súbela"
+              pistas={[
+                'Se admite .xlsx, .csv y también pegar las celdas directamente desde Excel. No hace falta renombrar cabeceras: se reconocen en inglés y en español.',
+                'La columna que manda es el correo: si ya está en la libreta, el contacto se actualiza; si no, se crea. Es la identidad, porque dos personas se llaman igual pero nadie comparte buzón.',
+                'Antes de escribir nada se enseña qué va a pasar fila por fila. Los errores —un nombre que falta, un correo sin arroba, una fila repetida— se saltan; el resto entra.',
+              ]}
+            >
+              <MaquetaPrevisualizacion />
+            </Paso>
+
+            <Paso
+              n={3}
+              titulo="Verifica que los correos existan"
+              pistas={[
+                'Al cargar sólo se comprueba que el correo tenga forma de correo. Saber si el buzón existe exige preguntárselo a un proveedor externo, y eso cuesta dinero por consulta: es un paso aparte, que dispara una persona.',
+                'El veredicto tiene tres colores porque la realidad tiene tres respuestas. Válido llega; inválido rebota; riesgoso es el que no se puede confirmar ni descartar — un buzón genérico, un dominio que acepta todo.',
+                'Cada veredicto queda fechado y firmado. No es una propiedad eterna de la dirección: la gente cambia de trabajo, y por eso se vuelve a preguntar pasados tres meses.',
+              ]}
+            >
+              <MaquetaVerificacion />
+            </Paso>
+
+            <Revelar>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  [
+                    'El vocabulario lo pones tú',
+                    'Si tu hoja trae sectores que el portal no conoce —«Banking», «Manufacturing»—, se añaden solos al catálogo con el texto exacto que traes. Lo que sólo cambia en tildes, mayúsculas o una errata se entiende como el que ya estaba.',
+                  ],
+                  [
+                    'Las dos listas no se pisan',
+                    'Un contacto que llegó como académico no lo convierte en empleador una carga posterior, aunque aparezca en las dos hojas. Se conserva como estaba y la previsualización lo dice antes.',
+                  ],
+                  [
+                    'Y vuelve a salir igual',
+                    'La libreta se exporta en el formato exacto de la plantilla, columna por columna. Lo que se cargó se puede devolver sin rehacerlo a mano.',
+                  ],
+                ].map(([titulo, texto], i) => (
+                  <Revelar key={titulo} retraso={i * 70}>
+                    <div className="h-full rounded-lg border border-line bg-surface p-4">
+                      <p className="text-body font-medium text-fg">{titulo}</p>
+                      <p className="mt-1.5 text-body-sm leading-relaxed text-fg-muted">{texto}</p>
+                    </div>
+                  </Revelar>
+                ))}
+              </div>
+            </Revelar>
+
+            <Revelar>
+              <Card className="flex items-start gap-3 border-warning/30 bg-warning-soft p-4">
+                <Compass aria-hidden className="mt-0.5 size-4 shrink-0 text-warning-softFg" />
+                <p className="text-body-sm leading-relaxed text-warning-softFg">
+                  <Fuerte>Un contacto sin clasificar entra igual.</Fuerte> Si falta el país, el rol
+                  o el sector, la carga no se detiene: el contacto se guarda y se completa después
+                  desde su ficha. Lo único que impide guardarlo es que no tenga nombre, no tenga
+                  cargo o el correo no sea un correo — lo demás se puede arreglar más tarde, y
+                  detener una carga de cuatrocientas filas por eso no ayuda a nadie.
+                </p>
+              </Card>
+            </Revelar>
           </Seccion>
 
           {/* =========================== Axioma ========================== */}

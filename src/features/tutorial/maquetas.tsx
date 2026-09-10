@@ -1,14 +1,18 @@
 import type { ReactNode } from 'react'
 import {
+  Briefcase,
   Building2,
   Check,
   CheckCircle2,
   ClipboardList,
   Clock,
+  Download,
   FileText,
   Folder,
+  GraduationCap,
   Landmark,
   Lock,
+  MailCheck,
   Send,
   ShieldCheck,
   Sparkles,
@@ -478,5 +482,279 @@ export function TablaOficinas() {
         </li>
       ))}
     </ul>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Rankings · las plantillas prediseñadas
+//
+// Se dibujan las cabeceras REALES de los dos archivos, con su grafía original en
+// inglés. No es un detalle estético: quien abre el tutorial suele tener la
+// plantilla delante, y lo que necesita es reconocerla, no leer una versión
+// bonita de ella.
+// -----------------------------------------------------------------------------
+const Sello = ({
+  children,
+  tono = 'neutro',
+}: {
+  children: ReactNode
+  tono?: 'neutro' | 'exito' | 'primario' | 'aviso' | 'peligro'
+}) => (
+  <span
+    className={cn(
+      'inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-overline uppercase ring-1 ring-inset',
+      {
+        neutro: 'bg-surface-muted text-fg-muted ring-line',
+        exito: 'bg-success-soft text-success-softFg ring-success/25',
+        primario: 'bg-primary-soft text-primary-softFg ring-primary/20',
+        aviso: 'bg-warning-soft text-warning-softFg ring-warning/25',
+        peligro: 'bg-danger-soft text-danger-softFg ring-danger/25',
+      }[tono],
+    )}
+  >
+    {children}
+  </span>
+)
+
+const PLANTILLAS_TUTORIAL = [
+  {
+    icono: GraduationCap,
+    nombre: 'Contactos académicos',
+    archivo: 'academic_template_V3.xlsx',
+    columnas: [
+      'Source',
+      'Title',
+      'First Name',
+      'Last Name',
+      'Job Title',
+      'Department',
+      'Institution',
+      'Country or Territory',
+      'Email',
+      'Subject',
+      'Phone (Optional)',
+    ],
+  },
+  {
+    icono: Briefcase,
+    nombre: 'Contactos de empleadores',
+    archivo: 'employer_template_2024_V1.xlsx',
+    columnas: [
+      'Source',
+      'Title',
+      'First Name',
+      'Last Name',
+      'Position',
+      'Industry',
+      'Company Name',
+      'Country or Territory',
+      'Email',
+      'Phone (Optional)',
+    ],
+  },
+]
+
+export function MaquetaPlantillas() {
+  return (
+    <Ventana titulo="Internacionalización → Importar Contactos">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {PLANTILLAS_TUTORIAL.map((p, i) => {
+          const Icono = p.icono
+          return (
+            <div
+              key={p.nombre}
+              className={cn(
+                'rounded-lg border p-3',
+                // La primera va resaltada: en la pantalla real siempre hay una
+                // elegida, y una maqueta con las dos apagadas no enseña eso.
+                i === 0 ? 'border-primary bg-primary-soft' : 'border-line bg-surface',
+              )}
+            >
+              <p className="flex items-center gap-2">
+                <Icono
+                  aria-hidden
+                  className={cn('size-4', i === 0 ? 'text-primary-softFg' : 'text-fg-subtle')}
+                />
+                <span className={cn('text-label', i === 0 ? 'text-primary-softFg' : 'text-fg')}>
+                  {p.nombre}
+                </span>
+              </p>
+
+              <p className="mt-2 flex flex-wrap gap-1">
+                {p.columnas.map((c) => (
+                  <span
+                    key={c}
+                    className="rounded bg-surface px-1.5 py-0.5 font-mono text-[10px] text-fg-muted ring-1 ring-inset ring-line"
+                  >
+                    {c}
+                  </span>
+                ))}
+              </p>
+
+              <p className="mt-2.5 truncate font-mono text-[10px] text-fg-subtle">{p.archivo}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Boton primario pulsando>
+          <Download className="size-3.5" />
+          Descargar plantilla .xlsx
+        </Boton>
+        <span className="text-body-sm text-fg-subtle">
+          La primera hoja es la plantilla tal cual; la segunda, las instrucciones.
+        </span>
+      </div>
+    </Ventana>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Rankings · la previsualización
+//
+// Cuatro filas elegidas para que se vean los cuatro desenlaces posibles. Es lo
+// que de verdad hay que entender antes de pulsar «Importar»: que nada se escribe
+// sin haberlo enseñado antes.
+// -----------------------------------------------------------------------------
+const FILAS_PREVISUALIZACION: {
+  linea: number
+  nombre: string
+  correo: string
+  sello: string
+  tono: 'exito' | 'primario' | 'neutro' | 'peligro'
+  mensaje: string
+}[] = [
+  {
+    linea: 12,
+    nombre: 'María Fernanda Ruiz',
+    correo: 'mf.ruiz@universidad.mx',
+    sello: 'Crear',
+    tono: 'exito',
+    mensaje: 'Se creará.',
+  },
+  {
+    linea: 13,
+    nombre: 'John Carter',
+    correo: 'j.carter@stateuniv.edu',
+    sello: 'Actualizar',
+    tono: 'primario',
+    mensaje: 'Se actualizará el contacto existente.',
+  },
+  {
+    linea: 14,
+    nombre: 'Li Wei',
+    correo: 'li.wei@tsinghua.cn',
+    sello: 'Se conserva',
+    tono: 'neutro',
+    mensaje: 'Ya está en la libreta como contacto académico. No se tocará.',
+  },
+  {
+    linea: 15,
+    nombre: '—',
+    correo: 'sin.arroba.example',
+    sello: 'Error',
+    tono: 'peligro',
+    mensaje: 'El correo no tiene arroba.',
+  },
+]
+
+export function MaquetaPrevisualizacion() {
+  return (
+    <Ventana titulo="Previsualización · nada se ha escrito todavía">
+      <div className="flex flex-wrap gap-1.5">
+        <Sello tono="primario">Contactos de empleadores</Sello>
+        <Sello tono="exito">248 se crean</Sello>
+        <Sello tono="primario">31 se actualizan</Sello>
+        <Sello tono="neutro">6 de la otra lista</Sello>
+        <Sello tono="peligro">3 con error</Sello>
+      </div>
+
+      <div className="mt-3 rounded-md bg-primary-soft px-3 py-2 text-body-sm text-primary-softFg">
+        Se añadirán <strong>4 valores nuevos</strong> al catálogo: Banking, Manufacturing,
+        Consulting, Logistics.
+      </div>
+
+      <ul className="mt-3 divide-y divide-line">
+        {FILAS_PREVISUALIZACION.map((f) => (
+          <li key={f.linea} className="flex items-start gap-3 py-2">
+            <span className="w-6 shrink-0 pt-0.5 text-right font-mono text-[11px] text-fg-subtle">
+              {f.linea}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-body-sm text-fg">{f.nombre}</span>
+              <span className="block truncate font-mono text-[11px] text-fg-subtle">
+                {f.correo}
+              </span>
+            </span>
+            <span className="shrink-0">
+              <Sello tono={f.tono}>{f.sello}</Sello>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-2 border-t border-line pt-2 text-body-sm text-fg-subtle">
+        Cada fila lleva su diagnóstico al lado: qué se corrige, qué se clasifica solo y qué hay
+        que arreglar antes.
+      </p>
+    </Ventana>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// Rankings · el veredicto de los correos
+// -----------------------------------------------------------------------------
+const VEREDICTOS: {
+  correo: string
+  sello: string
+  tono: 'exito' | 'aviso' | 'peligro'
+  mensaje: string
+}[] = [
+  {
+    correo: 'mf.ruiz@universidad.mx',
+    sello: 'Válido',
+    tono: 'exito',
+    mensaje: 'El buzón existe y acepta correo.',
+  },
+  {
+    correo: 'info@empresa.com',
+    sello: 'Riesgoso',
+    tono: 'aviso',
+    mensaje: 'Acepta correo, pero es genérico: llega a una oficina, no a una persona.',
+  },
+  {
+    correo: 'j.perez@dominio-viejo.edu',
+    sello: 'Inválido',
+    tono: 'peligro',
+    mensaje: 'El dominio no tiene servidor de correo: nada de lo que se envíe llegará.',
+  },
+]
+
+export function MaquetaVerificacion() {
+  return (
+    <Ventana titulo="Internacionalización → Verificación de Correos">
+      <div className="flex items-center gap-2">
+        <Boton primario pulsando>
+          <MailCheck className="size-3.5" />
+          Verificar 200
+        </Boton>
+        <span className="text-body-sm text-fg-subtle">Va a un correo por segundo.</span>
+      </div>
+
+      <ul className="mt-3 flex flex-col gap-2">
+        {VEREDICTOS.map((v) => (
+          <li key={v.correo} className="rounded-md border border-line bg-surface p-2.5">
+            <p className="flex flex-wrap items-center gap-2">
+              <span className="min-w-0 truncate font-mono text-[11px] text-fg-muted">
+                {v.correo}
+              </span>
+              <Sello tono={v.tono}>{v.sello}</Sello>
+            </p>
+            <p className="mt-1 text-body-sm text-fg-subtle">{v.mensaje}</p>
+          </li>
+        ))}
+      </ul>
+    </Ventana>
   )
 }
