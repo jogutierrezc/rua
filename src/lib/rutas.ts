@@ -42,6 +42,7 @@ export interface RutaMenu {
 export const GRUPOS_POR_DEFECTO: { codigo: string; titulo: string }[] = [
   { codigo: 'analisis', titulo: 'Análisis' },
   { codigo: 'planeacion', titulo: 'Planeación Estratégica' },
+  { codigo: 'internacionalizacion', titulo: 'Internacionalización' },
   { codigo: 'operacion', titulo: 'Operación' },
   { codigo: 'administracion', titulo: 'Administración' },
 ]
@@ -133,6 +134,38 @@ export const RUTAS_MENU: RutaMenu[] = [
     permiso: 'planeacion.ver',
     icono: 'Target',
     grupo: 'planeacion',
+  },
+  {
+    ruta: '/internacionalizacion/contactos',
+    inicial: true,
+    etiqueta: 'Contactos',
+    permiso: 'internacionalizacion.ver',
+    icono: 'Contact',
+    grupo: 'internacionalizacion',
+  },
+  {
+    ruta: '/internacionalizacion/importar',
+    inicial: true,
+    etiqueta: 'Importar Contactos',
+    permiso: 'internacionalizacion.administrar',
+    icono: 'Database',
+    grupo: 'internacionalizacion',
+  },
+  {
+    ruta: '/internacionalizacion/verificacion',
+    inicial: true,
+    etiqueta: 'Verificación de Correos',
+    permiso: 'internacionalizacion.verificar',
+    icono: 'MailCheck',
+    grupo: 'internacionalizacion',
+  },
+  {
+    ruta: '/internacionalizacion/catalogos',
+    inicial: true,
+    etiqueta: 'Roles y Sectores',
+    permiso: 'internacionalizacion.administrar',
+    icono: 'Tags',
+    grupo: 'internacionalizacion',
   },
   {
     ruta: '/usuarios',

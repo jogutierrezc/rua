@@ -132,6 +132,7 @@ en insumos de planeación.
 | **RUA Tracker** | Ver fases, responsables, plazo en días hábiles y línea de tiempo. |
 | **Periodos** | Planificar, abrir, poblar y cerrar periodos sin solapamientos. |
 | **Usuarios y roles** | Gestionar perfiles, permisos, estado y restablecimiento de contraseñas. |
+| **Internacionalización** | Mantener la libreta de contactos del exterior, cargarla y devolverla en las plantillas de nominación —académica y de empleadores— y verificar con un proveedor externo si cada correo existe y está activo. |
 | **Auditoría** | Registrar automáticamente cambios relevantes y decisiones. |
 | **Correo** | Encolar avisos, renderizar plantillas y conservar bitácora de envíos. |
 | **Apariencia** | Elegir paletas y modo claro/oscuro con verificación WCAG AA. |
@@ -315,6 +316,26 @@ npx supabase functions deploy crear-usuario
 npx supabase functions deploy restablecer-contrasena
 npx supabase functions deploy enviar-correo
 npx supabase functions deploy probar-correo
+npx supabase functions deploy verificar-correo
+```
+
+La verificación de correos habla con la API **Email Reputation** de AbstractAPI,
+así que necesita su clave. Vive como secreto del servidor y nunca llega al
+navegador: el portal sólo puede preguntar si está configurada y ver sus cuatro
+primeros y últimos caracteres, no cuál es.
+
+```bash
+npx supabase secrets set ABSTRACT_API_KEY=<clave>
+```
+
+Ojo con cuál: Abstract da una clave **distinta por cada una de sus APIs**, y usar
+la de otra devuelve «Invalid API key provided», que parece un problema de la
+clave y es un problema de dirección. Si la de la institución fuera la de Email
+Validation en vez de la de Reputation, basta con apuntar el endpoint —la
+respuesta se interpreta igual, porque la base reconoce las dos formas:
+
+```bash
+npx supabase secrets set ABSTRACT_API_URL=https://emailvalidation.abstractapi.com/v1/
 ```
 
 Cada función es **un solo archivo**, sin carpeta compartida ni imports

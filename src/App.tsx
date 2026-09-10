@@ -25,6 +25,10 @@ import {
   ProgramasSniesPage,
   ProyeccionCuposPage,
 } from '@/features/planeacion/EnDesarrollo'
+import { ContactosPage } from '@/features/internacionalizacion/ContactosPage'
+import { ImportarContactosPage } from '@/features/internacionalizacion/ImportarContactosPage'
+import { VerificacionPage } from '@/features/internacionalizacion/VerificacionPage'
+import { CatalogosPage } from '@/features/internacionalizacion/CatalogosPage'
 import { TutorialPage } from '@/features/tutorial/TutorialPage'
 import { EmptyState } from '@/components/ui/primitives'
 import { LinkButton } from '@/components/ui/LinkButton'
@@ -146,6 +150,44 @@ export function App() {
               element={
                 <RequierePermiso permiso="planeacion.ver">
                   <ProyeccionCuposPage />
+                </RequierePermiso>
+              }
+            />
+          </Route>
+
+          {/* Internacionalización. La lista la puede ver cualquiera con el
+              permiso de lectura —que llevan todos los roles de sistema—; lo que
+              se reserva es escribir, importar y gastar créditos verificando. */}
+          <Route path="internacionalizacion">
+            <Route
+              path="contactos"
+              element={
+                <RequierePermiso permiso="internacionalizacion.ver">
+                  <ContactosPage />
+                </RequierePermiso>
+              }
+            />
+            <Route
+              path="importar"
+              element={
+                <RequierePermiso permiso="internacionalizacion.administrar">
+                  <ImportarContactosPage />
+                </RequierePermiso>
+              }
+            />
+            <Route
+              path="verificacion"
+              element={
+                <RequierePermiso permiso="internacionalizacion.verificar">
+                  <VerificacionPage />
+                </RequierePermiso>
+              }
+            />
+            <Route
+              path="catalogos"
+              element={
+                <RequierePermiso permiso="internacionalizacion.administrar">
+                  <CatalogosPage />
                 </RequierePermiso>
               }
             />

@@ -1,5 +1,6 @@
 import { normalizarCabecera } from './csv'
 import { CODIGO_MAX, CODIGO_MIN } from './codigos'
+import type { DefinicionPlantilla } from './plantillasContactos'
 
 /**
  * Lectura y escritura de libros de Excel.
@@ -465,5 +466,317 @@ export async function descargarPlantillaProgramas() {
     sheets: ['Programas', 'Instrucciones'],
     columns: [ANCHOS_PROGRAMAS, [{ width: 22 }, { width: 14 }, { width: 46 }, { width: 62 }]],
     fileName: 'plantilla-programas.xlsx',
+  })
+}
+
+// -----------------------------------------------------------------------------
+// Contactos internacionales
+// -----------------------------------------------------------------------------
+
+/**
+ * Estructura recomendada de la hoja de contactos.
+ *
+ * El servidor acepta además otros nombres para la misma columna —y también en
+ * inglés: «email» por «correo», «country» por «país», «position» por «cargo»—,
+ * porque una libreta internacional se alimenta de listas de asistentes a
+ * congresos y de directorios de universidades socias, que llegan en inglés tan a
+ * menudo como en español. Ésta es la forma canónica: la que se descarga y la que
+ * se documenta.
+ */
+export const COLUMNAS_CONTACTOS = [
+  'nombre_completo',
+  'cargo',
+  'pais',
+  'correo',
+  'rol',
+  'sector',
+  'organizacion',
+  'telefono',
+  'notas',
+] as const
+
+const ANCHOS_CONTACTOS = [
+  { width: 32 },
+  { width: 34 },
+  { width: 18 },
+  { width: 34 },
+  { width: 30 },
+  { width: 26 },
+  { width: 38 },
+  { width: 20 },
+  { width: 44 },
+]
+
+export async function descargarPlantillaContactos() {
+  const { default: writeXlsxFile } = await import('write-excel-file')
+
+  const datos: Celda[][] = [
+    COLUMNAS_CONTACTOS.map((c) => cabecera(c)),
+    [
+      texto('María Fernanda Ruiz'),
+      texto('Directora de Relaciones Internacionales'),
+      texto('México'),
+      texto('mf.ruiz@universidad.mx'),
+      texto('Coordinador de Internacionalización'),
+      texto('Educación superior'),
+      texto('Universidad Nacional Autónoma de México'),
+      texto('+52 55 1234 5678'),
+      texto('Contacto del convenio de movilidad docente 2026.'),
+    ],
+    [
+      // Sin los tres últimos: son opcionales a propósito, y el ejemplo lo enseña.
+      texto('John Carter'),
+      texto('Research Coordinator'),
+      texto('United States'),
+      texto('j.carter@stateuniv.edu'),
+      texto('Investigador'),
+      texto('Investigación y ciencia'),
+      texto(null),
+      texto(null),
+      texto(null),
+    ],
+  ]
+
+  const fila = (
+    columna: string,
+    obligatoria: string,
+    admitidos: string,
+    nota: string,
+  ): Celda[] => [titulo(columna), texto(obligatoria), texto(admitidos), { value: nota, wrap: true }]
+
+  const instrucciones: Celda[][] = [
+    [
+      { value: 'Columna', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: '¿Obligatoria?', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: 'Valores admitidos', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: 'Notas', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+    ],
+    fila(
+      'nombre_completo',
+      'Sí',
+      'Nombre y apellido, sin números ni símbolos',
+      'Si viene TODO EN MAYÚSCULAS o todo en minúsculas se corrige la escritura al importar, y la previsualización te enseña cómo quedará. Si ya está bien escrito, no se toca.',
+    ),
+    fila(
+      'cargo',
+      'Sí',
+      'Texto libre, de 2 a 120 caracteres',
+      'El cargo tal como lo usa la persona. Se corrige la escritura igual que el nombre.',
+    ),
+    fila(
+      'pais',
+      'Recomendada',
+      'Nombre del país, su código ISO de dos letras, o su nombre en inglés',
+      'Se admiten Colombia, CO, «Estados Unidos», USA y United States. Si la columna no viene, el contacto se importa sin país; si viene y no se reconoce, la fila da error y se te ofrece el más parecido.',
+    ),
+    fila(
+      'correo',
+      'Sí',
+      'Una dirección de correo válida',
+      'Es la columna que EMPAREJA: si el correo ya existe, el contacto se actualiza; si no, se crea. Al importar sólo se comprueba la estructura; que el buzón exista se verifica después, desde Verificación de Correos.',
+    ),
+    fila(
+      'rol',
+      'Recomendada',
+      'Un valor del catálogo de roles',
+      'Directivo, Coordinador de Internacionalización, Docente, Investigador, Gestor de proyectos, Administrativo, Estudiante, Egresado, Consultor u Otro. Si necesitas uno nuevo, créalo antes en Roles y Sectores. Sin la columna, el contacto entra sin clasificar y puede clasificarse después.',
+    ),
+    fila(
+      'sector',
+      'Recomendada',
+      'Un valor del catálogo de sectores',
+      'Educación superior, Investigación y ciencia, Gobierno, Cooperación internacional, Empresa privada, ONG y tercer sector, Salud, Cultura, Organismo multilateral u Otro.',
+    ),
+    fila('organizacion', 'No', 'Texto libre', 'La institución o empresa a la que pertenece.'),
+    fila('telefono', 'No', 'Texto libre', 'Con indicativo del país, si lo sabes.'),
+    fila('notas', 'No', 'Texto libre', 'Contexto para quien lea la ficha más adelante.'),
+    [],
+    [
+      { value: 'Si tu hoja ya viene de otro sitio', fontWeight: 'bold', backgroundColor: GRIS },
+      { backgroundColor: GRIS },
+      { backgroundColor: GRIS },
+      { backgroundColor: GRIS },
+    ],
+    [
+      {
+        value:
+          'No hace falta renombrar las cabeceras. Se reconocen también en inglés y en las formas que usan las plantillas de nominación: First Name y Last Name se unen en el nombre completo, y valen Job Title, Position, Country or Territory, Email, Industry, Institution, Company Name y Phone (Optional).',
+        wrap: true,
+      },
+    ],
+    [
+      {
+        value:
+          'Department y Subject no tienen columna propia: se guardan en las notas, que es donde alguien los va a buscar.',
+        wrap: true,
+      },
+    ],
+    [],
+    [
+      {
+        value:
+          'Un correo repetido DENTRO de la misma hoja se marca como error en la segunda aparición: sin eso, la segunda fila pisaría a la primera en silencio.',
+        wrap: true,
+      },
+    ],
+    [
+      {
+        value:
+          'Una celda vacía en una fila que actualiza nunca borra un dato que ya estuviera guardado.',
+        wrap: true,
+      },
+    ],
+  ]
+
+  await writeXlsxFile([datos, instrucciones], {
+    sheets: ['Contactos', 'Instrucciones'],
+    columns: [ANCHOS_CONTACTOS, [{ width: 22 }, { width: 14 }, { width: 46 }, { width: 68 }]],
+    fileName: 'plantilla-contactos.xlsx',
+  })
+}
+
+/**
+ * Exporta la libreta a .xlsx con el MISMO formato que acepta la importación.
+ *
+ * Es lo que cierra el ciclo: exportar, corregir en Excel y volver a subir. Un
+ * formato de salida distinto al de entrada rompería ese flujo. Se añaden al
+ * final las columnas de la verificación, que son de sólo lectura —la
+ * importación las ignora— pero son justo lo que se quiere mirar fuera del
+ * portal para decidir a quién se escribe.
+ */
+export async function exportarContactosExcel(
+  filas: Record<string, string>[],
+  nombreArchivo: string,
+) {
+  const { default: writeXlsxFile } = await import('write-excel-file')
+
+  const columnas = [...COLUMNAS_CONTACTOS, 'verificacion', 'verificado_en', 'diagnostico']
+
+  const datos: Celda[][] = [
+    columnas.map((c) => cabecera(c)),
+    ...filas.map((f) => columnas.map((c) => texto(f[c] || null))),
+  ]
+
+  await writeXlsxFile(datos, {
+    sheet: 'Contactos',
+    columns: [...ANCHOS_CONTACTOS, { width: 16 }, { width: 18 }, { width: 60 }],
+    fileName: nombreArchivo,
+  })
+}
+
+// -----------------------------------------------------------------------------
+// Plantillas de nominación (académica y de empleadores)
+// -----------------------------------------------------------------------------
+
+/**
+ * Genera el .xlsx de una plantilla de nominación.
+ *
+ * La primera hoja es la plantilla TAL CUAL: sus cabeceras, en su orden, con su
+ * grafía original —«Phone (Optional)» incluido— y nada más. Ni una fila de
+ * ejemplo, ni una columna de ayuda. Es un formato ajeno que alguien va a
+ * rellenar y a devolver a quien se lo pidió, y cualquier añadido nuestro sería
+ * algo que esa persona tendría que acordarse de borrar.
+ *
+ * Los ejemplos y las explicaciones van en una SEGUNDA hoja. Ahí no estorban, y
+ * al subir el archivo el importador lee sólo la primera.
+ */
+export async function descargarPlantillaNominacion(plantilla: DefinicionPlantilla) {
+  const { default: writeXlsxFile } = await import('write-excel-file')
+
+  const columnas = [...plantilla.columnas]
+
+  // La hoja de datos: sólo la fila de cabecera.
+  const datos: Celda[][] = [columnas.map((c) => cabecera(c))]
+
+  const instrucciones: Celda[][] = [
+    [
+      { value: 'Columna', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: '¿Obligatoria?', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: 'Ejemplo', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+      { value: 'Qué se espera', fontWeight: 'bold', color: '#FFFFFF', backgroundColor: AZUL },
+    ],
+    ...plantilla.ayuda.map((a): Celda[] => [
+      titulo(a.columna),
+      texto(a.obligatoria),
+      texto(plantilla.ejemplo[a.columna] ?? null),
+      { value: a.nota, wrap: true },
+    ]),
+    [],
+    [
+      { value: 'Cómo se usa', fontWeight: 'bold', backgroundColor: GRIS },
+      { backgroundColor: GRIS },
+      { backgroundColor: GRIS },
+      { backgroundColor: GRIS },
+    ],
+    [
+      {
+        value: `1. Rellena la hoja «${plantilla.hoja}» debajo de la fila de cabecera. No cambies los nombres de las columnas ni su orden.`,
+        wrap: true,
+      },
+    ],
+    [
+      {
+        value:
+          '2. Guarda el archivo en .xlsx o expórtalo a .csv. El importador admite los dos, y también pegar las celdas directamente desde Excel.',
+        wrap: true,
+      },
+    ],
+    [
+      {
+        value: `3. Súbelo en Internacionalización → Importar Contactos, eligiendo «${plantilla.nombre}». Verás una previsualización antes de que se escriba nada.`,
+        wrap: true,
+      },
+    ],
+    [],
+    [
+      {
+        value:
+          'Un correo repetido dentro de la misma hoja se marca como error en la segunda aparición: sin eso, la segunda fila pisaría a la primera en silencio.',
+        wrap: true,
+      },
+    ],
+    [
+      {
+        value:
+          'Una celda vacía en una fila que actualiza significa «no lo sé», nunca «bórralo»: no borra un dato que ya estuviera guardado.',
+        wrap: true,
+      },
+    ],
+  ]
+
+  await writeXlsxFile([datos, instrucciones], {
+    sheets: [plantilla.hoja, 'Instrucciones'],
+    columns: [
+      plantilla.anchos.map((width) => ({ width })),
+      [{ width: 24 }, { width: 14 }, { width: 36 }, { width: 66 }],
+    ],
+    fileName: `${plantilla.archivo}.xlsx`,
+  })
+}
+
+/**
+ * Exporta contactos con la estructura de una plantilla, en Excel.
+ *
+ * Misma forma que el .csv de la plantilla, pero en libro: es lo que se manda a
+ * alguien para que lo LEA. El .csv es para devolverlo al sistema del que salió;
+ * este archivo es para revisarlo sin que Excel se pelee con las tildes.
+ */
+export async function exportarPlantillaExcel(
+  plantilla: DefinicionPlantilla,
+  filas: Record<string, string>[],
+  nombreArchivo: string,
+) {
+  const { default: writeXlsxFile } = await import('write-excel-file')
+  const columnas = [...plantilla.columnas]
+
+  const datos: Celda[][] = [
+    columnas.map((c) => cabecera(c)),
+    ...filas.map((f) => columnas.map((c) => texto(f[c] || null))),
+  ]
+
+  await writeXlsxFile(datos, {
+    sheet: plantilla.hoja,
+    columns: plantilla.anchos.map((width) => ({ width })),
+    fileName: nombreArchivo,
   })
 }

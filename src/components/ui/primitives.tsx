@@ -141,12 +141,30 @@ export function Avatar({
 // -----------------------------------------------------------------------------
 // Tabla de datos
 // -----------------------------------------------------------------------------
-export function TableShell({ children, className }: { children: ReactNode; className?: string }) {
+export function TableShell({
+  children,
+  className,
+  anchoMinimo = 'min-w-[46rem]',
+}: {
+  children: ReactNode
+  className?: string
+  /**
+   * Ancho por debajo del cual la tabla prefiere desbordar a comprimirse.
+   *
+   * El valor por defecto es el que tenían todas: una tabla densa apretada en
+   * 400 px no se lee, y es mejor desplazarla que romperla. Se puede pasar
+   * `min-w-0` cuando la tabla ya sabe encogerse por su cuenta —escondiendo
+   * columnas o cediendo el sitio a una lista de tarjetas—, que es preferible
+   * siempre que la pantalla lo permita: el scroll lateral esconde columnas sin
+   * decir que existen.
+   */
+  anchoMinimo?: string
+}) {
   // El desbordamiento horizontal se queda DENTRO de este contenedor:
   // la página nunca debe hacer scroll lateral.
   return (
     <div className={cn('w-full overflow-x-auto', className)}>
-      <table className="w-full min-w-[46rem] border-collapse text-left">{children}</table>
+      <table className={cn('w-full border-collapse text-left', anchoMinimo)}>{children}</table>
     </div>
   )
 }

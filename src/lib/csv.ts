@@ -136,13 +136,25 @@ export function objetosACsv(
   filas: Record<string, unknown>[],
   columnas: string[],
   delimitador: DelimitadorCsv = ',',
+  /**
+   * Anteponer la marca de orden de bytes.
+   *
+   * Por defecto s\u00ED: es lo que hace que Excel abra el archivo como UTF-8 y no
+   * destroce las tildes, y casi siempre el destino de una exportaci\u00F3n es Excel.
+   *
+   * Se puede desactivar para los archivos que van a M\u00C1QUINAS y no a personas.
+   * Una plantilla que se devuelve al sistema del que sali\u00F3 tiene que salir byte
+   * a byte como entr\u00F3: hay lectores que no esperan el BOM y se lo comen dentro
+   * del primer nombre de columna, con lo que \u00ABSource\u00BB pasa a llamarse \u00AB\uFEFFSource\u00BB
+   * y la columna deja de reconocerse.
+   */
+  conBom = true,
 ): string {
   const lineas = [
     columnas.join(delimitador),
     ...filas.map((f) => columnas.map((c) => escaparCelda(f[c])).join(delimitador)),
   ]
-  // El BOM hace que Excel abra el archivo como UTF-8 y no destroce las tildes.
-  return '\uFEFF' + lineas.join('\r\n')
+  return (conBom ? '\uFEFF' : '') + lineas.join('\r\n')
 }
 
 /** Dispara la descarga de un texto como archivo. */

@@ -61,6 +61,9 @@ export type CodigoPermiso =
   | 'auditoria.consultar'
   | 'planeacion.ver'
   | 'planeacion.administrar'
+  | 'internacionalizacion.ver'
+  | 'internacionalizacion.administrar'
+  | 'internacionalizacion.verificar'
 
 // -----------------------------------------------------------------------------
 // Filas
@@ -329,6 +332,39 @@ export type ResultadoImportacionProgramas = {
   omitidos: number
 }
 
+/** Una fila de la hoja de contactos, tal como la evalúa la previsualización. */
+export type FilaContactoValidada = {
+  linea: number
+  nombre: string | null
+  cargo: string | null
+  correo: string | null
+  /** Ya resuelto contra el catálogo cuando se reconoció; el texto crudo si no. */
+  pais: string | null
+  rol: string | null
+  sector: string | null
+  /**
+   * Si el catálogo reconoció el valor.
+   *
+   * `false` es «la celda trae algo que no conozco»; `null` es «la celda venía
+   * vacía». Distinguirlos es lo que permite ofrecer añadir al catálogo
+   * exactamente los valores que faltan, sin repetir en el cliente las reglas de
+   * cómo se comparan.
+   */
+  pais_ok: boolean | null
+  rol_ok: boolean | null
+  sector_ok: boolean | null
+  /** `omitir`: ya está en la libreta pero vino de la otra plantilla. No se toca. */
+  accion: 'crear' | 'actualizar' | 'omitir' | 'error'
+  severidad: 'ok' | 'aviso' | 'error'
+  mensaje: string
+}
+
+export type ResultadoImportacionContactos = {
+  creados: number
+  actualizados: number
+  omitidos: number
+}
+
 /** Lo que devuelve `fn_guardar_solicitud`. */
 export type ResultadoGuardado = {
   id: string
@@ -560,6 +596,149 @@ export type ProgramaObservacionRow = {
   creado_en: string
 }
 
+// -----------------------------------------------------------------------------
+// Internacionalización
+// -----------------------------------------------------------------------------
+export type TipoCatalogoContacto = 'rol' | 'sector'
+
+/**
+ * El veredicto sobre un buzón.
+ *
+ * `riesgoso` existe porque la realidad tiene tres respuestas y no dos: hay
+ * direcciones que el proveedor no confirma ni desmiente. Meterlas en `valido`
+ * haría creer que llegan; meterlas en `invalido` haría borrar contactos buenos.
+ */
+export type EstadoVerificacion = 'sin_verificar' | 'valido' | 'riesgoso' | 'invalido' | 'error'
+
+/**
+ * De qué plantilla de nominación vino el contacto.
+ *
+ * Decide con qué columnas se exporta. `general` es quien se dio de alta a mano o
+ * llegó en una hoja propia: no es un residuo, es la mayoría de la libreta el día
+ * que sólo se usa el formulario.
+ */
+export type TipoContactoInternacional = 'general' | 'academico' | 'empleador'
+
+export type PaisRow = {
+  /** ISO 3166-1 alfa-2. */
+  codigo: string
+  nombre: string
+  region: string
+  /** Otras formas de escribirlo que la importación acepta (USA, United States). */
+  alias: string[]
+  activo: boolean
+}
+
+export type ContactoCatalogoRow = {
+  id: string
+  tipo: TipoCatalogoContacto
+  /** Clave estable. Se separa de la etiqueta para poder renombrar sin perder a qué apuntaban los contactos. */
+  codigo: string
+  etiqueta: string
+  descripcion: string | null
+  orden: number
+  activo: boolean
+  es_sistema: boolean
+  creado_en: string
+  actualizado_en: string
+}
+
+export type ContactoRow = {
+  id: string
+  nombre_completo: string
+  /** First Name, tal como vino en la plantilla. Si llegó el nombre entero, la base lo deriva. */
+  nombres: string | null
+  apellidos: string | null
+  /** Dr., Prof., Mr. Va aparte del nombre porque en la plantilla tiene su propia columna. */
+  tratamiento: string | null
+  cargo: string
+  /** La identidad del contacto: es la clave con la que empareja la importación. */
+  correo: string
+  pais_codigo: string | null
+  rol_id: string | null
+  sector_id: string | null
+
+  tipo_contacto: TipoContactoInternacional
+  organizacion: string | null
+  /** Department de la plantilla académica: facultad, escuela o unidad. */
+  departamento: string | null
+  /** Subject de la plantilla académica: la disciplina sobre la que se le nomina. */
+  area_conocimiento: string | null
+  /** Source: de dónde salió la nominación. */
+  fuente: string | null
+  telefono: string | null
+  notas: string | null
+
+  estado: EstadoRegistro
+
+  // La verificación. Todo esto lo escribe la Edge Function y nadie más.
+  verificacion_estado: EstadoVerificacion
+  verificacion_en: string | null
+  verificacion_por: string | null
+  verificacion_mensaje: string | null
+
+  entregable: string | null
+  calidad: number | null
+  formato_valido: boolean | null
+  buzon_smtp: boolean | null
+  dominio_mx: boolean | null
+  es_desechable: boolean | null
+  es_gratuito: boolean | null
+  es_generico: boolean | null
+  acepta_todo: boolean | null
+  /** low · medium · high, la palabra del proveedor. Sólo lo da Email Reputation. */
+  riesgo: string | null
+  /** El nombre de usuario parece generado automáticamente. */
+  es_sospechoso: boolean | null
+  correccion: string | null
+  verificacion_detalle: Json | null
+
+  creado_por: string | null
+  creado_en: string
+  actualizado_en: string
+}
+
+/** El contacto con país, rol, sector y autores ya resueltos por la vista. */
+export type ContactoDetalleRow = ContactoRow & {
+  pais_nombre: string | null
+  pais_region: string | null
+  rol_etiqueta: string | null
+  sector_etiqueta: string | null
+  creado_por_nombre: string | null
+  verificado_por_nombre: string | null
+  dias_desde_verificacion: number | null
+}
+
+/** Lo que devuelve la Edge Function `verificar-correo` por cada contacto. */
+export type ResultadoVerificacion = {
+  id: string
+  correo: string
+  estado: EstadoVerificacion
+  mensaje: string | null
+  /** Cierto cuando el veredicto seguía vigente y no se gastó un crédito. */
+  omitido?: boolean
+}
+
+export type RespuestaVerificacion = {
+  ok?: boolean
+  error?: string
+  resultados?: ResultadoVerificacion[]
+  resumen?: Record<string, number>
+  consultados?: number
+  /**
+   * Nunca trae la clave. Sí lo justo para reconocerla: su longitud y los cuatro
+   * caracteres de cada extremo, que es lo que hace falta para comprobar contra
+   * el panel del proveedor que la configurada es la que se cree.
+   */
+  diagnostico?: {
+    api_key: boolean
+    longitud?: number
+    huella?: string | null
+    /** A cuál de las APIs de Abstract se está preguntando. */
+    api?: string
+  }
+}
+
 export type ConfigCorreo = {
   activo?: boolean
   remitente?: string
@@ -662,6 +841,9 @@ export interface Database {
       plantillas_correo: Tabla<PlantillaCorreoRow>
       programas_udes: Tabla<ProgramaUdesRow>
       programa_observaciones: Tabla<ProgramaObservacionRow>
+      paises: Tabla<PaisRow>
+      contacto_catalogo: Tabla<ContactoCatalogoRow>
+      contactos_internacionales: Tabla<ContactoRow>
       menu_grupos: Tabla<MenuGrupoRow>
       menu_entradas: Tabla<MenuEntradaRow>
       correos: Tabla<CorreoRow>
@@ -673,6 +855,7 @@ export interface Database {
       v_solicitud_etapas: { Row: SolicitudEtapaRow; Relationships: [] }
       v_solicitud_actividades: { Row: SolicitudActividadDetalleRow; Relationships: [] }
       v_programas_udes: { Row: ProgramaUdesDetalleRow; Relationships: [] }
+      v_contactos_internacionales: { Row: ContactoDetalleRow; Relationships: [] }
       v_etapas_configuracion: { Row: EtapaConfiguracionRow; Relationships: [] }
     }
     Functions: {
@@ -704,6 +887,23 @@ export interface Database {
       fn_importar_programas: {
         Args: { p_filas: Record<string, string>[]; p_modo?: ModoImportacion }
         Returns: ResultadoImportacionProgramas[]
+      }
+      fn_validar_importacion_contactos: {
+        Args: {
+          p_filas: Record<string, string>[]
+          p_tipo?: TipoContactoInternacional
+          /** Cuántas filas van validadas antes de este trozo, para numerar como la hoja. */
+          p_desde?: number
+        }
+        Returns: FilaContactoValidada[]
+      }
+      fn_importar_contactos: {
+        Args: {
+          p_filas: Record<string, string>[]
+          p_modo?: ModoImportacion
+          p_tipo?: TipoContactoInternacional
+        }
+        Returns: ResultadoImportacionContactos[]
       }
       fn_guardar_solicitud: {
         Args: {
@@ -763,6 +963,9 @@ export interface Database {
       accion_auditoria: AccionAuditoria
       estado_etapa: EstadoEtapa
       estado_correo: EstadoCorreo
+      tipo_catalogo_contacto: TipoCatalogoContacto
+      estado_verificacion: EstadoVerificacion
+      tipo_contacto_internacional: TipoContactoInternacional
     }
     CompositeTypes: { [_ in never]: never }
   }
